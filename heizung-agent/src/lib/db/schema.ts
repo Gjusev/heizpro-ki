@@ -9,7 +9,7 @@ const heizpro = pgSchema('heizpro');
 
 // --- Agents ---
 export const agents = heizpro.table('agents', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 50 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   description: text('description'),
   personality: varchar('personality', { length: 30 }).notNull().default('beratend'),
@@ -30,7 +30,7 @@ export const agents = heizpro.table('agents', {
 
 // --- Scripts ---
 export const scripts = heizpro.table('scripts', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 100 }).primaryKey(),
   name: varchar('name', { length: 200 }).notNull(),
   niche: varchar('niche', { length: 50 }).notNull(),
   description: text('description'),
@@ -45,16 +45,16 @@ export const scripts = heizpro.table('scripts', {
 // --- Agent-Script Assignment ---
 export const agentScripts = heizpro.table('agent_scripts', {
   id: uuid('id').primaryKey().defaultRandom(),
-  agentId: uuid('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
-  scriptId: uuid('script_id').notNull().references(() => scripts.id, { onDelete: 'cascade' }),
+  agentId: varchar('agent_id', { length: 50 }).notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  scriptId: varchar('script_id', { length: 100 }).notNull().references(() => scripts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // --- Calls ---
 export const calls = heizpro.table('calls', {
   id: uuid('id').primaryKey().defaultRandom(),
-  agentId: uuid('agent_id').references(() => agents.id),
-  scriptId: uuid('script_id').references(() => scripts.id),
+  agentId: varchar('agent_id', { length: 50 }).references(() => agents.id),
+  scriptId: varchar('script_id', { length: 100 }).references(() => scripts.id),
   niche: varchar('niche', { length: 50 }),
   status: varchar('status', { length: 30 }).notNull().default('abgeschlossen'),
   outcome: varchar('outcome', { length: 30 }),
@@ -85,7 +85,7 @@ export type Agent = typeof agents.$inferSelect;
 export type NewAgent = typeof agents.$inferInsert;
 export type Script = typeof scripts.$inferSelect;
 export type NewScript = typeof scripts.$inferInsert;
-export type Call = typeof calls.$inferSelect;
+export type CallRecord = typeof calls.$inferSelect;
 export type NewCall = typeof calls.$inferInsert;
 export type AgentScript = typeof agentScripts.$inferSelect;
 export type SpeechEngine = typeof speechEngines.$inferSelect;

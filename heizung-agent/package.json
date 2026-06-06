@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "ws:dev": "npx tsx ws-server.ts",
     "ws:start": "npx tsx ws-server.ts",
     "setup:speech": "npx tsx scripts/setup-speech-engine.ts",
+    "db:seed": "tsx scripts/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
@@ -44,6 +47,7 @@
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.7"
   }
 }

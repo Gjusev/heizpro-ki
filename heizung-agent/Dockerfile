@@ -42,10 +42,19 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Copy DB migrations and seed scripts
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src/lib/db ./src/lib/db
+COPY --from=builder /app/src/lib/mock-data.ts ./src/lib/mock-data.ts
+COPY --from=builder /app/src/lib/sales-scripts.ts ./src/lib/sales-scripts.ts
+COPY --from=builder /app/src/types ./src/types
+
 # Copy WebSocket server + speech engine (for optional Speech Engine mode)
 COPY --from=builder /app/ws-server.ts ./ws-server.ts
 COPY --from=builder /app/src/lib/speech-engine.ts ./src/lib/speech-engine.ts
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 
 USER nextjs
 
@@ -53,4 +62,5 @@ USER nextjs
 EXPOSE 3000 3001
 
 # Start Next.js. WS server can be run separately with: node --import tsx ws-server.ts
+# Run migrations + seed on first deploy: pnpm run db:migrate && pnpm run db:seed
 CMD ["node", "server.js"]
