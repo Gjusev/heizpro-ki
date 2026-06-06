@@ -8,7 +8,7 @@ import { getScripts, saveCall } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import {
   Mic, MicOff, Phone, PhoneOff, Volume2, VolumeX, Bot, User,
-  Clock, Target, ArrowRight, Headphones, BarChart3, Languages
+  Clock, Target, ArrowRight, Headphones, BarChart3, Languages, Zap
 } from 'lucide-react';
 import type { Niche, SalesScript, Call, CallTranscript } from '@/types';
 
@@ -29,7 +29,6 @@ interface Msg {
   phase?: string;
 }
 
-// Isolated voice bar animation — memoized client component
 const VoiceBars = () => (
   <div className="flex items-end gap-[3px] h-8">
     {Array.from({ length: 14 }).map((_, i) => (
@@ -58,6 +57,23 @@ const TypingIndicator = () => (
     </div>
   </div>
 );
+
+// Mode badge component
+const ModeBadge = ({ mode }: { mode: string }) => {
+  const config = {
+    'speech-engine': { label: 'Speech Engine', color: 'bg-emerald-500', icon: Zap },
+    'tts': { label: 'ElevenLabs', color: 'bg-orange-500', icon: Headphones },
+    'browser': { label: 'Browser', color: 'bg-stone-400', icon: Volume2 },
+  }[mode] || { label: 'Browser', color: 'bg-stone-400', icon: Volume2 };
+  const Icon = config.icon;
+  return (
+    <div className="flex items-center gap-1.5 text-[9px] text-stone-400">
+      <div className={cn('w-1.5 h-1.5 rounded-full', config.color)} />
+      <Icon className="w-2.5 h-2.5" />
+      <span>{config.label}</span>
+    </div>
+  );
+};
 
 export default function SimulatorPage() {
   const voice = useVoice();
@@ -153,9 +169,9 @@ export default function SimulatorPage() {
 
   return (
     <main className="overflow-x-hidden w-full max-w-full">
-      {/* ASYMMETRIC HERO — Split layout for desktop, stacked for mobile */}
+      {/* ASYMMETRIC HERO */}
       <section className="relative min-h-[100dvh] flex flex-col lg:flex-row items-stretch">
-        {/* Left: Content side */}
+        {/* Left: Content */}
         <div className="flex-1 flex flex-col justify-center px-5 py-10 md:px-12 lg:px-16 lg:py-20 lg:max-w-[52%]">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
             <div className="flex items-center gap-3 mb-5">
@@ -173,7 +189,7 @@ export default function SimulatorPage() {
               Alles laeuft im Browser — keine externe Software noetig.
             </p>
 
-            {/* Niche selector — hidden during active call */}
+            {/* Niche selector */}
             {!callActive && (
               <motion.div className="flex flex-wrap gap-1.5 mb-7" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
                 {nicheConfigs.slice(0, 8).map((niche) => (
@@ -195,7 +211,7 @@ export default function SimulatorPage() {
             {!callActive && (
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-stone-400 text-xs">
                 {[
-                  { icon: Headphones, text: 'ElevenLabs Stimme' },
+                  { icon: voice.mode === 'speech-engine' ? Zap : Headphones, text: voice.mode === 'speech-engine' ? 'Speech Engine' : 'ElevenLabs Stimme' },
                   { icon: Languages, text: 'Deutsch (de-DE)' },
                   { icon: BarChart3, text: '8 Nischen' },
                 ].map((f, i) => (
@@ -212,7 +228,7 @@ export default function SimulatorPage() {
         <div className="flex-1 flex items-center justify-center px-4 pb-6 lg:pb-0 lg:pr-10 xl:pr-16">
           <motion.div className="w-full max-w-[420px]" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}>
             <div className="bg-white rounded-[1.5rem] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.07)] border border-stone-200/60 overflow-hidden">
-              {/* Status */}
+              {/* Status bar */}
               <div className={cn('px-4 py-3 flex items-center justify-between transition-all duration-500', callActive ? 'bg-stone-900 text-white' : 'bg-stone-50/80')}>
                 <div className="flex items-center gap-2.5">
                   <div className={cn('w-8 h-8 rounded-full flex items-center justify-center transition-colors', callActive ? 'bg-emerald-500/20' : 'bg-stone-200')}>
@@ -228,11 +244,14 @@ export default function SimulatorPage() {
                           <span>{voice.isSpeaking ? 'Spricht...' : voice.isListening ? 'Hoert zu' : 'Aktiv'}</span>
                           <Clock className="w-2.5 h-2.5" />{fmt(callDuration)}
                         </>
-                      ) : <span>{nicheConfigs.find((n) => n.id === selectedNiche)?.name}</span>}
+                      ) : (
+                        <ModeBadge mode={voice.mode} />
+                      )}
                     </div>
                   </div>
                 </div>
-                {/* Phase indicators — dots only on small, labels on desktop */}
+
+                {/* Phase indicators */}
                 {callActive && (
                   <div className="flex items-center gap-0.5">
                     {Object.entries(PHASE_META).map(([key, val]) => (
@@ -247,16 +266,22 @@ export default function SimulatorPage() {
                 )}
               </div>
 
-              {/* Messages */}
+              {/* Messages area */}
               <div className="h-[280px] sm:h-[340px] lg:h-[400px] overflow-y-auto p-3.5 space-y-2 bg-stone-50/20">
                 {!callActive && messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full px-4">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-3 shadow-lg shadow-orange-500/15">
                       <Phone className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-stone-400 text-[11px] text-center max-w-[180px] leading-relaxed">
+                    <p className="text-stone-400 text-[11px] text-center max-w-[200px] leading-relaxed mb-2">
                       KI-Verkaeufer spricht. Sie antworten als Kunde.
                     </p>
+                    {voice.mode === 'speech-engine' && (
+                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[9px] font-medium">
+                        <Zap className="w-2.5 h-2.5" />
+                        Echtzeit-Sprachmodus aktiv
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -352,7 +377,7 @@ export default function SimulatorPage() {
         </div>
       </section>
 
-      {/* BENTO — responsive grid */}
+      {/* BENTO */}
       {!callActive && (
         <section className="px-5 lg:px-12 pb-12">
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-2.5" style={{ gridAutoFlow: 'dense' }}>

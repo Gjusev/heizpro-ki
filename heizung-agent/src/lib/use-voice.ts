@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ============================================
-// Voice Hook – ElevenLabs TTS + Web Speech Recognition
-// Sprachausgabe: ElevenLabs API (Production) / Browser Fallback
-// Spracherkennung: Web Speech API (Browser, kostenlos)
+// Voice Hook – Multi-Mode Voice Interface
+// Mode 1: Speech Engine (ElevenLabs real-time, full-duplex)
+// Mode 2: ElevenLabs TTS (server proxy, browser STT)
+// Mode 3: Browser fallback (SpeechSynthesis + Web Speech API)
 // ============================================
+
+type VoiceMode = 'speech-engine' | 'tts' | 'browser';
 
 interface VoiceState {
   isListening: boolean;
@@ -14,7 +17,7 @@ interface VoiceState {
   isSupported: boolean;
   currentTranscript: string;
   error: string | null;
-  ttsMode: 'elevenlabs' | 'browser';
+  mode: VoiceMode;
 }
 
 interface UseVoiceReturn extends VoiceState {
@@ -34,7 +37,7 @@ export function useVoice(): UseVoiceReturn {
     isSupported: false,
     currentTranscript: '',
     error: null,
-    ttsMode: 'browser',
+    mode: 'browser',
   });
 
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -43,6 +46,20 @@ export function useVoice(): UseVoiceReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
+  // Detect available voice mode on mount
+  useEffect(() => {
+    fetch('/api/speech-status')
+      .then((res) => res.json())
+      .then((data) => {
+        const mode: VoiceMode = data.mode || 'browser';
+        setState((prev) => ({ ...prev, mode }));
+      })
+      .catch(() => {
+        setState((prev) => ({ ...prev, mode: 'browser' }));
+      });
+  }, []);
+
+  // Setup browser recognition + synthesis (used in TTS and browser modes)
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const hasSynth = 'speechSynthesis' in window;
@@ -55,7 +72,6 @@ export function useVoice(): UseVoiceReturn {
       return;
     }
 
-    // Setup Speech Recognition (user mic input)
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
@@ -79,18 +95,10 @@ export function useVoice(): UseVoiceReturn {
       }
     };
 
-    recognition.onend = () => {
-      setState((prev) => ({ ...prev, isListening: false }));
-    };
-
+    recognition.onend = () => setState((prev) => ({ ...prev, isListening: false }));
     recognitionRef.current = recognition;
 
-    // Setup audio element for ElevenLabs playback
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-
-    // Setup browser synthesis as fallback
+    if (!audioRef.current) audioRef.current = new Audio();
     synthRef.current = window.speechSynthesis;
 
     const loadVoices = () => {
@@ -109,27 +117,8 @@ export function useVoice(): UseVoiceReturn {
     return () => {
       recognition.abort();
       window.speechSynthesis.cancel();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     };
-  }, []);
-
-  // Check ElevenLabs availability
-  useEffect(() => {
-    fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: '__check__' }),
-    })
-      .then((res) => res.headers.get('Content-Type'))
-      .then((ct) => {
-        if (ct === 'audio/mpeg') {
-          setState((prev) => ({ ...prev, ttsMode: 'elevenlabs' }));
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const startListening = useCallback(() => {
@@ -141,10 +130,7 @@ export function useVoice(): UseVoiceReturn {
     } catch {
       recognitionRef.current.stop();
       setTimeout(() => {
-        try {
-          recognitionRef.current.start();
-          setState((prev) => ({ ...prev, isListening: true }));
-        } catch {}
+        try { recognitionRef.current.start(); setState((prev) => ({ ...prev, isListening: true })); } catch {}
       }, 100);
     }
   }, []);
@@ -155,12 +141,9 @@ export function useVoice(): UseVoiceReturn {
     setState((prev) => ({ ...prev, isListening: false }));
   }, []);
 
-  // ElevenLabs TTS via API
+  // ElevenLabs TTS via API proxy
   const speakElevenLabs = useCallback(async (text: string, onEnd?: () => void) => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-
+    if (!audioRef.current) audioRef.current = new Audio();
     const audio = audioRef.current;
     audio.pause();
 
@@ -172,26 +155,15 @@ export function useVoice(): UseVoiceReturn {
       });
 
       const contentType = res.headers.get('Content-Type') || '';
-
       if (contentType === 'audio/mpeg') {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-
         audio.src = url;
         audio.onplay = () => setState((prev) => ({ ...prev, isSpeaking: true }));
-        audio.onended = () => {
-          setState((prev) => ({ ...prev, isSpeaking: false }));
-          URL.revokeObjectURL(url);
-          onEnd?.();
-        };
-        audio.onerror = () => {
-          setState((prev) => ({ ...prev, isSpeaking: false }));
-          URL.revokeObjectURL(url);
-          onEnd?.();
-        };
+        audio.onended = () => { setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
+        audio.onerror = () => { setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
         await audio.play();
       } else {
-        // Fallback to browser TTS
         speakBrowser(text, onEnd);
       }
     } catch {
@@ -204,14 +176,7 @@ export function useVoice(): UseVoiceReturn {
     if (!synthRef.current) { onEnd?.(); return; }
     synthRef.current.cancel();
 
-    const cleanText = text
-      .replace(/\[.*?\]/g, '')
-      .replace(/\(.*?\)/g, '')
-      .replace(/\*/g, '')
-      .replace(/\n/g, '. ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    const cleanText = text.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/\*/g, '').replace(/\n/g, '. ').replace(/\s+/g, ' ').trim();
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'de-DE';
     utterance.rate = 1.0;
@@ -222,25 +187,25 @@ export function useVoice(): UseVoiceReturn {
     utterance.onstart = () => setState((prev) => ({ ...prev, isSpeaking: true }));
     utterance.onend = () => { setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
     utterance.onerror = () => { setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
-
     synthRef.current.speak(utterance);
   }, [selectedVoice]);
 
   const speak = useCallback((text: string, onEnd?: () => void) => {
-    if (state.ttsMode === 'elevenlabs') {
+    if (state.mode === 'speech-engine') {
+      // In Speech Engine mode, TTS is handled by ElevenLabs directly.
+      // The browser hook doesn't speak — the SDK does.
+      onEnd?.();
+      return;
+    }
+    if (state.mode === 'tts') {
       speakElevenLabs(text, onEnd);
     } else {
       speakBrowser(text, onEnd);
     }
-  }, [state.ttsMode, speakElevenLabs, speakBrowser]);
+  }, [state.mode, speakElevenLabs, speakBrowser]);
 
   const stopSpeaking = useCallback(() => {
-    // Stop ElevenLabs audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    // Stop browser TTS
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
     if (synthRef.current) synthRef.current.cancel();
     setState((prev) => ({ ...prev, isSpeaking: false }));
   }, []);

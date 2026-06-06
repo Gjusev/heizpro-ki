@@ -1,5 +1,5 @@
 # ============================================
-# HeizPro KI – Dockerfile für Dokploy
+# HeizPro KI – Dockerfile fuer Dokploy
 # ============================================
 
 FROM node:20-alpine AS base
@@ -31,6 +31,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV WS_PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs
@@ -41,8 +42,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Copy WebSocket server + speech engine (for optional Speech Engine mode)
+COPY --from=builder /app/ws-server.ts ./ws-server.ts
+COPY --from=builder /app/src/lib/speech-engine.ts ./src/lib/speech-engine.ts
+COPY --from=builder /app/node_modules ./node_modules
+
 USER nextjs
 
-EXPOSE 3000
+# Next.js app on 3000, optional WS server on 3001
+EXPOSE 3000 3001
 
+# Start Next.js. WS server can be run separately with: node --import tsx ws-server.ts
 CMD ["node", "server.js"]
