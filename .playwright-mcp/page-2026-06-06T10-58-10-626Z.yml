@@ -1,0 +1,227 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - heading "HeizPro KI" [level=1] [ref=e9]
+          - paragraph [ref=e10]: Vertriebsagent
+      - navigation [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img [ref=e13]
+          - generic [ref=e18]: Dashboard
+        - link "Sprachassistent LIVE" [ref=e20] [cursor=pointer]:
+          - /url: /simulator
+          - img [ref=e21]
+          - generic [ref=e24]: Sprachassistent
+          - generic [ref=e25]: LIVE
+        - link "KI-Agenten" [ref=e26] [cursor=pointer]:
+          - /url: /agents
+          - img [ref=e27]
+          - generic [ref=e30]: KI-Agenten
+        - link "Leads" [ref=e31] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e32]
+          - generic [ref=e37]: Leads
+        - link "Anrufe" [ref=e38] [cursor=pointer]:
+          - /url: /calls
+          - img [ref=e39]
+          - generic [ref=e41]: Anrufe
+        - link "Skripte" [ref=e42] [cursor=pointer]:
+          - /url: /scripts
+          - img [ref=e43]
+          - generic [ref=e46]: Skripte
+      - generic [ref=e47]:
+        - paragraph [ref=e48]: Aktive Agenten
+        - generic [ref=e49]:
+          - generic [ref=e50]: "1"
+          - generic [ref=e51]: / 3 verfügbar
+    - main [ref=e54]:
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - heading "Dashboard" [level=1] [ref=e59]
+            - paragraph [ref=e60]: Willkommen zurück – Ihr KI-Agent ist aktiv
+          - generic [ref=e62]: Anna – Heizungs-KI – Aktiv
+        - generic [ref=e64]:
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - paragraph [ref=e68]: Anrufe heute
+              - paragraph [ref=e69]: "47"
+              - generic [ref=e70]:
+                - generic [ref=e71]: ↑ 12%
+                - generic [ref=e72]: vs. gestern
+            - img [ref=e74]
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - paragraph [ref=e79]: Termine gebucht
+              - paragraph [ref=e80]: "8"
+              - generic [ref=e81]:
+                - generic [ref=e82]: ↑ 18%
+                - generic [ref=e83]: vs. letzter Woche
+            - img [ref=e85]
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - paragraph [ref=e90]: Verbindungsrate
+              - paragraph [ref=e91]: 62.0%
+              - generic [ref=e92]:
+                - generic [ref=e93]: ↑ 3%
+                - generic [ref=e94]: Steigerung
+            - img [ref=e96]
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - paragraph [ref=e104]: Umsatz (Monat)
+              - paragraph [ref=e105]: 127.500 €
+              - generic [ref=e106]:
+                - generic [ref=e107]: ↑ 5%
+                - generic [ref=e108]: vs. Vormonat
+            - img [ref=e110]
+        - generic [ref=e112]:
+          - heading "Conversion-Funnel" [level=3] [ref=e113]
+          - generic [ref=e116]:
+            - generic [ref=e118]:
+              - generic [ref=e119]: Anrufe
+              - generic [ref=e120]: "1.247"
+            - generic [ref=e124]:
+              - generic [ref=e125]: Verbunden
+              - generic [ref=e126]: "773"
+            - generic [ref=e130]:
+              - generic [ref=e131]: Termine
+              - generic [ref=e132]: "108"
+            - generic [ref=e136]:
+              - generic [ref=e137]: Abschlüsse
+              - generic [ref=e138]: "19"
+        - generic [ref=e141]:
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - heading "Anruf-Aktivität" [level=3] [ref=e145]
+              - paragraph [ref=e146]: Letzte 14 Tage
+            - generic [ref=e147]:
+              - generic [ref=e150]: Anrufe
+              - generic [ref=e153]: Termine
+          - generic [ref=e158]:
+            - heading "Nischen-Übersicht" [level=3] [ref=e159]
+            - paragraph [ref=e160]: Ø Auftragswert je Nische
+        - generic [ref=e163]:
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - generic [ref=e166]:
+                - heading "Letzte Anrufe" [level=3] [ref=e167]
+                - paragraph [ref=e168]: Aktuelle Gesprächsergebnisse
+              - link "Alle" [ref=e169] [cursor=pointer]:
+                - /url: /calls
+                - text: Alle
+                - img [ref=e170]
+            - generic [ref=e172]:
+              - generic [ref=e173] [cursor=pointer]:
+                - img [ref=e175]
+                - generic [ref=e177]:
+                  - generic [ref=e178]:
+                    - paragraph [ref=e179]: Thomas Müller
+                    - generic [ref=e180]: 😊
+                  - paragraph [ref=e181]: Kunde hat alte Gasheizung (1998). Starkes Interesse an Wärme…
+                - generic [ref=e182]:
+                  - generic [ref=e183]: Termin gebucht
+                  - generic [ref=e184]:
+                    - img [ref=e185]
+                    - text: 8:05
+              - generic [ref=e188] [cursor=pointer]:
+                - img [ref=e190]
+                - generic [ref=e192]:
+                  - generic [ref=e193]:
+                    - paragraph [ref=e194]: Sabine Schmidt
+                    - generic [ref=e195]: 😐
+                  - paragraph [ref=e196]: Ölheizung defekt. Kunde braucht schnelle Lösung. Interesse a…
+                - generic [ref=e197]:
+                  - generic [ref=e198]: Interesse
+                  - generic [ref=e199]:
+                    - img [ref=e200]
+                    - text: 10:20
+              - generic [ref=e203] [cursor=pointer]:
+                - img [ref=e205]
+                - generic [ref=e207]:
+                  - generic [ref=e208]:
+                    - paragraph [ref=e209]: Michael Weber
+                    - generic [ref=e210]: 😊
+                  - paragraph [ref=e211]: Empfehlungskunde. Hohes Budget. Interesse an Wärmepumpe + Fu…
+                - generic [ref=e212]:
+                  - generic [ref=e213]: Termin gebucht
+                  - generic [ref=e214]:
+                    - img [ref=e215]
+                    - text: 6:30
+              - generic [ref=e218] [cursor=pointer]:
+                - img [ref=e220]
+                - generic [ref=e222]:
+                  - generic [ref=e223]:
+                    - paragraph [ref=e224]: Petra Hoffmann
+                    - generic [ref=e225]: 😐
+                  - paragraph [ref=e226]: Kunde hat aktuell keine Zeit. Rückruf am Freitag Nachmittag …
+                - generic [ref=e227]:
+                  - generic [ref=e228]: Rückruf
+                  - generic [ref=e229]:
+                    - img [ref=e230]
+                    - text: 3:00
+              - generic [ref=e233] [cursor=pointer]:
+                - img [ref=e235]
+                - generic [ref=e237]:
+                  - generic [ref=e238]:
+                    - paragraph [ref=e239]: Markus Wagner
+                    - generic [ref=e240]: 😊
+                  - paragraph [ref=e241]: "Doppelinteresse: Klimaanlage für OG + Heizungssanierung. Bud…"
+                - generic [ref=e242]:
+                  - generic [ref=e243]: Interesse
+                  - generic [ref=e244]:
+                    - img [ref=e245]
+                    - text: 12:00
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - generic [ref=e250]:
+                - heading "Kommende Termine" [level=3] [ref=e251]
+                - paragraph [ref=e252]: Beratungstermine & Vor-Ort-Besuche
+              - generic [ref=e253]: 3 Termine
+            - generic [ref=e254]:
+              - generic [ref=e256] [cursor=pointer]:
+                - generic [ref=e257]:
+                  - generic [ref=e258]: "12"
+                  - generic [ref=e259]: Jun
+                - generic [ref=e260]:
+                  - paragraph [ref=e261]: Thomas Müller
+                  - generic [ref=e262]:
+                    - generic [ref=e263]:
+                      - img [ref=e264]
+                      - text: 10:00 · 60 Min.
+                    - generic [ref=e267]: Wärmepumpe
+                  - generic [ref=e268]:
+                    - img [ref=e269]
+                    - generic [ref=e272]: Marienplatz 5, 80331 München
+              - generic [ref=e275] [cursor=pointer]:
+                - generic [ref=e276]:
+                  - generic [ref=e277]: "11"
+                  - generic [ref=e278]: Jun
+                - generic [ref=e279]:
+                  - paragraph [ref=e280]: Julia Koch
+                  - generic [ref=e281]:
+                    - generic [ref=e282]:
+                      - img [ref=e283]
+                      - text: 14:00 · 45 Min.
+                    - generic [ref=e286]: Solarthermie
+                  - generic [ref=e287]:
+                    - img [ref=e288]
+                    - generic [ref=e291]: Hohe Straße 33, 50667 Köln
+              - generic [ref=e294] [cursor=pointer]:
+                - generic [ref=e295]:
+                  - generic [ref=e296]: "14"
+                  - generic [ref=e297]: Jun
+                - generic [ref=e298]:
+                  - paragraph [ref=e299]: Michael Weber
+                  - generic [ref=e300]:
+                    - generic [ref=e301]:
+                      - img [ref=e302]
+                      - text: 11:00 · 90 Min.
+                    - generic [ref=e305]: Wärmepumpe
+                  - generic [ref=e306]:
+                    - img [ref=e307]
+                    - generic [ref=e310]: Rheinallee 45, 40545 Düsseldorf
+  - button "Open Next.js Dev Tools" [ref=e317] [cursor=pointer]:
+    - img [ref=e318]

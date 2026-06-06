@@ -1,0 +1,95 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e8]:
+        - heading "HeizPro KI" [level=1] [ref=e9]
+        - paragraph [ref=e10]: Vertriebsagent
+    - navigation [ref=e11]:
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - generic [ref=e18]: Dashboard
+      - link "Sprachassistent" [ref=e19] [cursor=pointer]:
+        - /url: /simulator
+        - img [ref=e20]
+        - generic [ref=e23]: Sprachassistent
+      - link "KI-Agenten" [ref=e24] [cursor=pointer]:
+        - /url: /agents
+        - img [ref=e25]
+        - generic [ref=e28]: KI-Agenten
+      - link "Leads" [ref=e29] [cursor=pointer]:
+        - /url: /leads
+        - img [ref=e30]
+        - generic [ref=e35]: Leads
+      - link "Anrufe" [ref=e36] [cursor=pointer]:
+        - /url: /calls
+        - img [ref=e37]
+        - generic [ref=e39]: Anrufe
+      - link "Skripte" [ref=e40] [cursor=pointer]:
+        - /url: /scripts
+        - img [ref=e41]
+        - generic [ref=e44]: Skripte
+    - generic [ref=e45]:
+      - paragraph [ref=e46]: Aktive Agenten
+      - generic [ref=e47]:
+        - generic [ref=e48]: "1"
+        - generic [ref=e49]: / 3 verfügbar
+  - main [ref=e52]:
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - heading "KI-Sprachassistent" [level=1] [ref=e57]
+          - paragraph [ref=e58]: Interaktiver Verkaufsagent – Sprechen Sie mit dem KI-Berater
+        - generic [ref=e60]: ⚠️ Browser nicht unterstützt – Bitte Chrome verwenden
+      - generic [ref=e61]:
+        - heading "Nische wählen" [level=3] [ref=e62]
+        - generic [ref=e63]:
+          - button "Wärmepumpe" [ref=e64]:
+            - generic [ref=e66]: Wärmepumpe
+          - button "Gasheizung / Brennwerttechnik" [ref=e67]:
+            - generic [ref=e69]: Gasheizung / Brennwerttechnik
+          - button "Klimaanlage / Klimatisierung" [ref=e70]:
+            - generic [ref=e72]: Klimaanlage / Klimatisierung
+          - button "Solarthermie" [ref=e73]:
+            - generic [ref=e75]: Solarthermie
+          - button "Pelletheizung" [ref=e76]:
+            - generic [ref=e78]: Pelletheizung
+          - button "Fußbodenheizung" [ref=e79]:
+            - generic [ref=e81]: Fußbodenheizung
+          - button "Sanitär / Badrenovierung" [ref=e82]:
+            - generic [ref=e84]: Sanitär / Badrenovierung
+          - button "Hybridheizung" [ref=e85]:
+            - generic [ref=e87]: Hybridheizung
+      - generic [ref=e88]:
+        - generic [ref=e90]:
+          - img [ref=e92]
+          - generic [ref=e95]:
+            - paragraph [ref=e96]: Wärmepumpe – Kaltakquise
+            - generic [ref=e98]: Bereit für Gespräch
+        - generic [ref=e100]:
+          - img [ref=e102]
+          - heading "Bereit für den Verkauf?" [level=3] [ref=e106]
+          - paragraph [ref=e107]: Starten Sie ein simuliertes Gespräch mit dem KI-Verkaufsagenten. Der Agent spricht mit Ihnen auf Deutsch und führt Sie durch den Verkaufsprozess.
+          - generic [ref=e108]:
+            - img [ref=e109]
+            - generic [ref=e113]: Lautsprecher & Mikrofon benötigt
+        - button "Gespräch starten" [disabled] [ref=e115]:
+          - img [ref=e116]
+          - text: Gespräch starten
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - img [ref=e122]
+            - heading "Sprachausgabe" [level=4] [ref=e126]
+          - paragraph [ref=e127]: Der Agent spricht Deutsch mit natürlicher Stimme direkt über Ihre Lautsprecher.
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - img [ref=e131]
+            - heading "Spracherkennung" [level=4] [ref=e134]
+          - paragraph [ref=e135]: Sprechen Sie natürlich auf Deutsch – der Agent versteht Sie und reagiert intelligent.
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - img [ref=e139]
+            - heading "Verkaufsstrategie" [level=4] [ref=e143]
+          - paragraph [ref=e144]: Professionelle Skripte für Wärmepumpen, Klimaanlagen, Gasheizungen u.v.m.
