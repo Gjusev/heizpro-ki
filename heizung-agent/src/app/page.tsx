@@ -131,7 +131,7 @@ export default function SimulatorPage() {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })), niche: selectedNiche, scriptId: activeScript?.id, currentPhase, agentId: activeAgentId, personality: activeAgent?.persoenlichkeit }),
+        body: JSON.stringify({ messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })), niche: selectedNiche, scriptId: activeScript?.id, currentPhase, agentId: activeAgentId, agentName: activeAgent?.name, personality: activeAgent?.persoenlichkeit }),
       });
       const data = await res.json();
       if (data.message) {
@@ -156,7 +156,7 @@ export default function SimulatorPage() {
   const startCall = async () => {
     setCallActive(true); setMessages([]); setCurrentPhase('begruessung'); setCallDuration(0); callStartRef.current = new Date(); setIsTyping(true);
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [], niche: selectedNiche, scriptId: activeScript?.id, currentPhase: 'begruessung', agentId: activeAgentId, personality: activeAgent?.persoenlichkeit }) });
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [], niche: selectedNiche, scriptId: activeScript?.id, currentPhase: 'begruessung', agentId: activeAgentId, agentName: activeAgent?.name, personality: activeAgent?.persoenlichkeit }) });
       const data = await res.json();
       if (data.message) {
         setCurrentPhase(data.phase);

@@ -45,6 +45,7 @@ export function useVoice(): UseVoiceReturn {
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
+  const isSpeakingRef = useRef(false);
 
   // Detect available voice mode on mount
   useEffect(() => {
@@ -123,7 +124,7 @@ export function useVoice(): UseVoiceReturn {
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
-    if (state.isSpeaking) return; // Block: never open mic while TTS is active
+    if (isSpeakingRef.current) return; // Block: never open mic while TTS is active (ref avoids stale closure)
     try { recognitionRef.current.stop(); } catch {} // Clear stale session
     setState((prev) => ({ ...prev, currentTranscript: '', error: null }));
     // Brief pause to let the audio hardware pipeline fully quiesce
@@ -136,7 +137,7 @@ export function useVoice(): UseVoiceReturn {
         // Already started or busy — ignore
       }
     }, 150);
-  }, [state.isSpeaking]);
+  }, []);
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return;
@@ -162,9 +163,9 @@ export function useVoice(): UseVoiceReturn {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         audio.src = url;
-        audio.onplay = () => setState((prev) => ({ ...prev, isSpeaking: true }));
-        audio.onended = () => { setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
-        audio.onerror = () => { setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
+        audio.onplay = () => { isSpeakingRef.current = true; setState((prev) => ({ ...prev, isSpeaking: true })); };
+        audio.onended = () => { isSpeakingRef.current = false; setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
+        audio.onerror = () => { isSpeakingRef.current = false; setState((prev) => ({ ...prev, isSpeaking: false })); URL.revokeObjectURL(url); onEnd?.(); };
         await audio.play();
       } else {
         speakBrowser(text, onEnd);
@@ -187,9 +188,9 @@ export function useVoice(): UseVoiceReturn {
     utterance.volume = 1.0;
     if (selectedVoice) utterance.voice = selectedVoice;
 
-    utterance.onstart = () => setState((prev) => ({ ...prev, isSpeaking: true }));
-    utterance.onend = () => { setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
-    utterance.onerror = () => { setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
+    utterance.onstart = () => { isSpeakingRef.current = true; setState((prev) => ({ ...prev, isSpeaking: true })); };
+    utterance.onend = () => { isSpeakingRef.current = false; setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
+    utterance.onerror = () => { isSpeakingRef.current = false; setState((prev) => ({ ...prev, isSpeaking: false })); onEnd?.(); };
     synthRef.current.speak(utterance);
   }, [selectedVoice]);
 
@@ -210,6 +211,7 @@ export function useVoice(): UseVoiceReturn {
   const stopSpeaking = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
     if (synthRef.current) synthRef.current.cancel();
+    isSpeakingRef.current = false;
     setState((prev) => ({ ...prev, isSpeaking: false }));
   }, []);
 

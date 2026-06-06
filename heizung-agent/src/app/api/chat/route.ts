@@ -21,6 +21,7 @@ interface ChatRequest {
   currentPhase: string;
   leadName?: string;
   agentId?: string;
+  agentName?: string;
   personality?: string;
 }
 
@@ -60,8 +61,10 @@ function buildSystemPrompt(params: {
   personality: string;
   currentPhase: string;
   leadName?: string;
+  agentName?: string;
 }): string {
-  const { script, nicheConfig, personality, currentPhase, leadName } = params;
+  const { script, nicheConfig, personality, currentPhase, leadName, agentName } = params;
+  const displayName = agentName?.split('–')[0].trim() || 'Anna';
 
   const personalityInstruction = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.beratend;
   const currentSection = script.abschnitte.find((s) => s.phase === currentPhase);
@@ -84,14 +87,15 @@ Beispiel-Text für diese Phase: "${currentSection.haupttext.slice(0, 300)}"
 ${currentSection.varianten.length > 0 ? `Alternative Formulierung: "${currentSection.varianten[0].slice(0, 200)}"` : ''}`
     : '';
 
-  return `Du bist ein virtueller Verkaufsberater für HeizPro, ein Unternehmen für Heizungs- und Klimatechnik in Deutschland. Du führst ein Telefonat mit einem potentiellen Kunden.
+  return `Du bist ${displayName}, ein virtueller Verkaufsberater für HeizPro, ein Unternehmen für Heizungs- und Klimatechnik in Deutschland. Du führst ein Telefonat mit einem potentiellen Kunden.
 
 # Deine Persönlichkeit
 ${personalityInstruction}
 
 # Deine Rolle
+- Du heißt ${displayName} — verwende IMMER diesen Namen, niemals Platzhalter wie [Agent-Name]
 - Du sprichst immer auf Deutsch, natürlich und gesprächig wie am Telefon
-- Du heißt ${leadName ? leadName : 'der Kunde'} mit Namen wenn bekannt, sonst sprichst du höflich mit "Sie"
+- ${leadName ? `Der Kunde heißt ${leadName} — verwende den Namen wenn passend.` : 'Sprichst du höflich mit "Sie"'}
 - Du bist Experte für ${nicheData?.name || script.niche}
 - Dein Ziel: Einen unverbindlichen, kostenlosen Beratungstermin vereinbaren
 
@@ -113,6 +117,8 @@ ${objectionRef}
 # Wichtige Regeln
 - Antworte IMMER auf Deutsch, kurz und natürlich (wie am Telefon, nicht wie ein Brief)
 - Keine Aufzählungszeichen, keine Bulletpoints – du sprichst, du schreibst keinen Prospekt
+- VERWENDE NIEMALS eckige Klammern-Platzhalter wie [Agent-Name], [Firma], [Ort], [Name] etc. — ersetze sie immer durch echte Werte
+- Dein Name ist ${displayName}, deine Firma ist HeizPro
 - Bleibe immer in deiner Rolle als Verkaufsberater
 - Wenn der Kunde Fragen zu Kosten oder Förderung hat, gib konkrete Zahlen
 - KfW-Förderung: bis zu 40% der Kosten, bei Wärmepumpen bis zu 7.200€
@@ -140,7 +146,8 @@ Sonst bleibe in der aktuellen Phase.`;
 // Fallback: Template-based responses (when no OpenAI key)
 // ============================================
 function templateResponse(body: ChatRequest): NextResponse {
-  const { messages, niche, scriptId, currentPhase, leadName } = body;
+  const { messages, niche, scriptId, currentPhase, leadName, agentName } = body;
+  const displayName = agentName?.split('–')[0].trim() || 'Anna';
   const script = salesScripts.find((s) => s.id === scriptId) || salesScripts.find((s) => s.niche === niche);
   if (!script) {
     return NextResponse.json({ error: 'Skript nicht gefunden' }, { status: 400 });
@@ -153,8 +160,8 @@ function templateResponse(body: ChatRequest): NextResponse {
     newPhase = 'begruessung';
     const section = script.abschnitte.find((s) => s.phase === 'begruessung');
     const greeting = section
-      ? section.haupttext.replace('[Agent-Name]', 'Anna').replace('[Firma]', 'HeizPro').replace('[Ort]', 'Ihrer Region')
-      : 'Guten Tag! Mein Name ist Anna von HeizPro. Wie kann ich Ihnen heute helfen?';
+      ? section.haupttext.replace('[Agent-Name]', displayName).replace('[Firma]', 'HeizPro').replace('[Ort]', 'Ihrer Region')
+      : `Guten Tag! Mein Name ist ${displayName} von HeizPro. Wie kann ich Ihnen heute helfen?`;
     return NextResponse.json({
       message: greeting, phase: newPhase, phaseLabel: PHASE_LABELS[newPhase],
       nextPhases: PHASE_ORDER, suggestions: ['Ja, ich höre zu', 'Guten Tag!', 'Was bieten Sie an?'],
@@ -196,7 +203,7 @@ function templateResponse(body: ChatRequest): NextResponse {
     if (section) {
       const templates = [section.haupttext, ...section.varianten];
       responseText = templates[Math.floor(Math.random() * templates.length)]
-        .replace(/\[Agent-Name\]/g, 'Anna').replace(/\[Firma\]/g, 'HeizPro')
+        .replace(/\[Agent-Name\]/g, displayName).replace(/\[Firma\]/g, 'HeizPro')
         .replace(/\[Ort\]/g, 'Ihrer Region').replace(/\[Name\]/g, leadName || 'Herr/Frau')
         .replace(/\[Tag\]/g, 'Donnerstag').replace(/\[Uhrzeit\]/g, '15:00');
     } else {
@@ -241,7 +248,7 @@ function getSuggestions(phase: string): string[] {
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { messages, niche, scriptId, currentPhase, leadName, personality } = body;
+    const { messages, niche, scriptId, currentPhase, leadName, personality, agentName } = body;
 
     const client = getOpenAIClient();
 
@@ -264,6 +271,7 @@ export async function POST(request: NextRequest) {
       personality: personality || 'beratend',
       currentPhase,
       leadName,
+      agentName,
     });
 
     // Convert message history to OpenAI format (cap at last 20 messages)

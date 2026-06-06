@@ -161,3 +161,4 @@
 [ 1274799ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/simulator?_rsc=gJvLbHS0Udr_qZza:0
 [ 1274812ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0oec_next_dist_167ltap._.js:2477
 [ 1274886ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/simulator:0
+[14130540ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://mischa.mokka-dev.de/api/db/calls:0
