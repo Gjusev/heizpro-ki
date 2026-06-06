@@ -2,7 +2,7 @@
 
 import type { Call, CallTranscript, SalesScript, AgentConfig } from '@/types';
 import { salesScripts as defaultScripts } from '@/lib/sales-scripts';
-import { mockAgent } from '@/lib/mock-data';
+import { mockAgents } from '@/lib/mock-data';
 
 // ============================================
 // LocalStorage Store – Full Persistence
@@ -11,7 +11,8 @@ import { mockAgent } from '@/lib/mock-data';
 const KEYS = {
   calls: 'heizpro_calls',
   scripts: 'heizpro_scripts',
-  agent: 'heizpro_agent',
+  agents: 'heizpro_agents',
+  activeAgent: 'heizpro_active_agent',
 };
 
 function getItem<T>(key: string, fallback: T): T {
@@ -65,11 +66,34 @@ export function deleteScript(scriptId: string): void {
   setItem(KEYS.scripts, getScripts().filter((s) => s.id !== scriptId));
 }
 
-// --- Agent ---
-export function getAgent(): AgentConfig {
-  return getItem<AgentConfig>(KEYS.agent, mockAgent);
+// --- Agents (multi-agent support, 2 agents) ---
+export function getAgents(): AgentConfig[] {
+  return getItem<AgentConfig[]>(KEYS.agents, mockAgents);
+}
+
+export function saveAgents(agents: AgentConfig[]): void {
+  setItem(KEYS.agents, agents);
 }
 
 export function saveAgent(agent: AgentConfig): void {
-  setItem(KEYS.agent, agent);
+  const agents = getAgents();
+  const idx = agents.findIndex((a) => a.id === agent.id);
+  if (idx >= 0) agents[idx] = agent;
+  else agents.push(agent);
+  saveAgents(agents);
+}
+
+export function getActiveAgentId(): string {
+  return getItem<string>(KEYS.activeAgent, 'agent-01');
+}
+
+export function setActiveAgentId(id: string): void {
+  setItem(KEYS.activeAgent, id);
+}
+
+/** Get the currently active agent as full AgentConfig (backwards compat) */
+export function getAgent(): AgentConfig {
+  const agents = getAgents();
+  const activeId = getActiveAgentId();
+  return agents.find((a) => a.id === activeId) || agents[0] || mockAgents[0];
 }

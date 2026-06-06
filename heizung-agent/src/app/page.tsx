@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVoice } from '@/lib/use-voice';
 import { nicheConfigs } from '@/lib/sales-scripts';
-import { getScripts, saveCall } from '@/lib/store';
+import { getScripts, saveCall, getAgents, getActiveAgentId } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import {
   Mic, MicOff, Phone, PhoneOff, Volume2, VolumeX, Bot, User,
@@ -84,11 +84,21 @@ export default function SimulatorPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeAgentId, setActiveAgentId] = useState('agent-01');
   const [activeScript, setActiveScript] = useState<SalesScript | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isProcessingRef = useRef(false);
   const callStartRef = useRef<Date | null>(null);
+
+  useEffect(() => {
+    setActiveAgentId(getActiveAgentId());
+  }, []);
+
+  const activeAgent = (() => {
+    const all = getAgents();
+    return all.find((a) => a.id === activeAgentId) || all[0];
+  })();
 
   useEffect(() => {
     const scripts = getScripts();
@@ -207,6 +217,27 @@ export default function SimulatorPage() {
               </motion.div>
             )}
 
+            {/* Agent switcher */}
+            {!callActive && (
+              <div className="flex items-center gap-2 mb-6">
+                {getAgents().map((a, i) => (
+                  <button key={a.id} onClick={() => setActiveAgentId(a.id)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97]',
+                      activeAgentId === a.id
+                        ? 'bg-stone-900 text-white shadow-md shadow-stone-900/10'
+                        : 'bg-white text-stone-500 border border-stone-200 hover:border-stone-300'
+                    )}>
+                    <div className={cn('w-5 h-5 rounded-md bg-gradient-to-br flex items-center justify-center',
+                      i === 0 ? 'from-orange-500 to-red-600' : 'from-blue-500 to-indigo-600')}>
+                      <Bot className="w-2.5 h-2.5 text-white" />
+                    </div>
+                    {a.name.split('–')[0].trim()}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Feature details */}
             {!callActive && (
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-stone-400 text-xs">
@@ -235,7 +266,7 @@ export default function SimulatorPage() {
                     <Bot className={cn('w-4 h-4', callActive ? 'text-emerald-400' : 'text-stone-500')} />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold leading-tight truncate max-w-[180px]">{activeScript?.name || 'HeizPro KI'}</p>
+                    <p className="text-xs font-semibold leading-tight truncate max-w-[180px]">{activeAgent?.name || activeScript?.name || 'HeizPro KI'}</p>
                     <div className="flex items-center gap-1.5 text-[10px] opacity-50 mt-0.5">
                       {callActive ? (
                         <>

@@ -258,8 +258,8 @@ export const mockCalls: Call[] = [
 
 export const mockAgent: AgentConfig = {
   id: 'agent-01',
-  name: 'Anna – Heizungs-KI',
-  beschreibung: 'Professionelle Vertriebsmitarbeiterin für Heizungssysteme. Beratend, vertrauensvoll und kompetent.',
+  name: 'Anna – Bauberaterin',
+  beschreibung: 'Ruhige, vertrauensvolle Beraterin. Spezialisiert auf Heizungssanierung und Energiewende. Perfekt fuer anspruchsvolle Hausbesitzer.',
   persoenlichkeit: 'beratend',
   sprache: 'de-DE',
   stimme: 'Marlene',
@@ -276,6 +276,30 @@ export const mockAgent: AgentConfig = {
   niches: ['waermepumpe', 'klimaanlage', 'gasheizung', 'solarthermie'],
   erstelltAm: '2024-01-01',
 };
+
+export const mockAgents: AgentConfig[] = [
+  mockAgent,
+  {
+    id: 'agent-02',
+    name: 'Max – Verkaufsprofi',
+    beschreibung: 'Energisch und zielorientiert. Abschlussstark mit Fokus auf schnelle Terminbuchung. Ideal fuer Kurzgespraeche und iPhones.',
+    persoenlichkeit: 'energisch',
+    sprache: 'de-DE',
+    stimme: 'Daniel',
+    geschwindigkeit: 1.1,
+    temperatur: 0.8,
+    aktiv: true,
+    maxAnrufeProTag: 100,
+    arbeitszeiten: {
+      start: '08:00',
+      ende: '20:00',
+      wochentage: [1, 2, 3, 4, 5, 6],
+    },
+    skriptIds: ['script-waermepumpe-01', 'script-gasheizung-01'],
+    niches: ['waermepumpe', 'gasheizung', 'hybridheizung', 'pelletsheizung'],
+    erstelltAm: '2024-01-01',
+  },
+];
 
 export const mockAppointments: Appointment[] = [
   {
