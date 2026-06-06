@@ -131,17 +131,20 @@ export default function SimulatorPage() {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })), niche: selectedNiche, scriptId: activeScript?.id, currentPhase }),
+        body: JSON.stringify({ messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })), niche: selectedNiche, scriptId: activeScript?.id, currentPhase, agentId: activeAgentId, personality: activeAgent?.persoenlichkeit }),
       });
       const data = await res.json();
       if (data.message) {
         setCurrentPhase(data.phase);
         setMessages((prev) => [...prev, { id: `msg-${Date.now()}-a`, role: 'agent', content: data.message, timestamp: new Date(), phase: data.phase }]);
         setSuggestions(data.suggestions || []); setIsTyping(false);
-        voice.speak(data.message, () => { setTimeout(() => { if (callActive) voice.startListening(); }, 400); });
+        voice.stopListening();
+        voice.speak(data.message, () => {
+          setTimeout(() => { if (callActive && !voice.isSpeaking) voice.startListening(); }, 1200);
+        });
       }
     } catch { setIsTyping(false); } finally { isProcessingRef.current = false; }
-  }, [messages, selectedNiche, activeScript, currentPhase, callActive, voice]);
+  }, [messages, selectedNiche, activeScript, currentPhase, callActive, voice, activeAgentId, activeAgent]);
 
   useEffect(() => {
     if (!callActive || !voice.isListening || !voice.currentTranscript?.trim()) return;
@@ -153,13 +156,16 @@ export default function SimulatorPage() {
   const startCall = async () => {
     setCallActive(true); setMessages([]); setCurrentPhase('begruessung'); setCallDuration(0); callStartRef.current = new Date(); setIsTyping(true);
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [], niche: selectedNiche, scriptId: activeScript?.id, currentPhase: 'begruessung' }) });
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [], niche: selectedNiche, scriptId: activeScript?.id, currentPhase: 'begruessung', agentId: activeAgentId, personality: activeAgent?.persoenlichkeit }) });
       const data = await res.json();
       if (data.message) {
         setCurrentPhase(data.phase);
         setMessages([{ id: `msg-${Date.now()}-a`, role: 'agent', content: data.message, timestamp: new Date(), phase: 'begruessung' }]);
         setSuggestions(data.suggestions || []); setIsTyping(false);
-        voice.speak(data.message, () => { setTimeout(() => { if (callActive) voice.startListening(); }, 400); });
+        voice.stopListening();
+        voice.speak(data.message, () => {
+          setTimeout(() => { if (callActive && !voice.isSpeaking) voice.startListening(); }, 1200);
+        });
       }
     } catch { setIsTyping(false); }
   };

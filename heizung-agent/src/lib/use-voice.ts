@@ -123,17 +123,20 @@ export function useVoice(): UseVoiceReturn {
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
+    if (state.isSpeaking) return; // Block: never open mic while TTS is active
+    try { recognitionRef.current.stop(); } catch {} // Clear stale session
     setState((prev) => ({ ...prev, currentTranscript: '', error: null }));
-    try {
-      recognitionRef.current.start();
-      setState((prev) => ({ ...prev, isListening: true }));
-    } catch {
-      recognitionRef.current.stop();
-      setTimeout(() => {
-        try { recognitionRef.current.start(); setState((prev) => ({ ...prev, isListening: true })); } catch {}
-      }, 100);
-    }
-  }, []);
+    // Brief pause to let the audio hardware pipeline fully quiesce
+    setTimeout(() => {
+      if (!recognitionRef.current) return;
+      try {
+        recognitionRef.current.start();
+        setState((prev) => ({ ...prev, isListening: true }));
+      } catch {
+        // Already started or busy — ignore
+      }
+    }, 150);
+  }, [state.isSpeaking]);
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return;

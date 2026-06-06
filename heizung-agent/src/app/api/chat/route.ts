@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 import { salesScripts, nicheConfigs } from '@/lib/sales-scripts';
+
+// ============================================
+// Chat API – OpenAI-powered conversation engine
+// Uses sales scripts as system prompt context,
+// structured JSON output for phase tracking
+// ============================================
 
 interface ChatMessage {
   role: 'agent' | 'user';
@@ -13,176 +20,308 @@ interface ChatRequest {
   scriptId: string;
   currentPhase: string;
   leadName?: string;
+  agentId?: string;
+  personality?: string;
+}
+
+const PHASE_ORDER = ['begruessung', 'bedarfsanalyse', 'praesentation', 'einwandbehandlung', 'abschluss', 'verabschiedung'];
+
+const PHASE_LABELS: Record<string, string> = {
+  begruessung: 'Begrüßung',
+  bedarfsanalyse: 'Bedarfsanalyse',
+  praesentation: 'Präsentation',
+  einwandbehandlung: 'Einwandbehandlung',
+  abschluss: 'Abschluss',
+  verabschiedung: 'Verabschiedung',
+};
+
+// Personality-specific system prompt instructions
+const PERSONALITY_PROMPTS: Record<string, string> = {
+  beratend: `Du bist beratend und empathisch. Du hörst aktiv zu, stellst Verständnisfragen und gibst dem Kunden das Gefühl, ernst genommen zu werden. Du drängst nicht, sondern überzeugst durch Fachwissen und echte Hilfsbereitschaft.`,
+  vertrauensvoll: `Du strahlst Vertrauen und Kompetenz aus. Du sprichst ruhig und sachlich, nennst konkrete Zahlen und Beispiele. Der Kunde fühlt sich bei dir in guten Händen. Du vermeidest Druck, baust aber eine starke Expertenwirkung auf.`,
+  energisch: `Du bist dynamisch und überzeugend. Du sprichst direkt und zielorientiert, betonst Vorteile und Handlungsdruck. Du erzeugst ein Gefühl von Dringlichkeit ohne aggressiv zu wirken. Du führst das Gespräch aktiv und bringst es voran.`,
+  ruhig: `Du bist gelassen und geduldig. Du gibst dem Kunde Zeit zum Denken, wiederholst wichtige Punkte sanft und gehst auf jedes Bedenken einfühlsam ein. Du schaffst eine entspannte Gesprächsatmosphäre.`,
+};
+
+// OpenAI client (lazy init)
+let openai: OpenAI | null = null;
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!openai) openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return openai;
 }
 
 // ============================================
-// Phasen-Logik: bestimmt die nächste Phase
-// basierend auf dem Gesprächsverlauf
+// System Prompt Builder
 // ============================================
-const PHASE_ORDER = ['begruessung', 'bedarfsanalyse', 'praesentation', 'einwandbehandlung', 'abschluss', 'verabschiedung'];
+function buildSystemPrompt(params: {
+  script: typeof salesScripts[0];
+  nicheConfig: typeof nicheConfigs[0] | undefined;
+  personality: string;
+  currentPhase: string;
+  leadName?: string;
+}): string {
+  const { script, nicheConfig, personality, currentPhase, leadName } = params;
 
-function detectPhase(userMessage: string, currentPhase: string): string {
-  const lower = userMessage.toLowerCase();
+  const personalityInstruction = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.beratend;
+  const currentSection = script.abschnitte.find((s) => s.phase === currentPhase);
+  const nicheData = nicheConfig;
 
-  // Positive Signale → nächste Phase
-  const positiveSignals = ['ja', 'gerne', 'interessiert', 'gut', 'super', 'okay', 'richtig', 'genau', 'stimmt', 'natürlich', 'klar', 'sicher', 'warum nicht', 'zeigt mir', 'erzählen sie', 'mehr darüber', 'termin', 'angebot', 'beratung'];
-  const objectionSignals = ['teuer', 'zu viel', 'nicht', 'nein', 'kein interesse', 'bedenken', 'zweifel', 'anderes mal', 'warten', 'überlegen', 'laut', 'unverständlich', 'funktioniert nicht', 'ungeeignet', 'schlecht'];
-  const closingSignals = ['termin', 'vereinbaren', 'angebot', 'klingt gut', 'weiter', 'machen wir', 'abschließen', 'unterschreiben', 'wann', 'passt'];
-  const endSignals = ['tschüss', 'auf wiedersehen', 'danke', 'bis dann', 'fertig', 'ende'];
+  // Build objection reference for the LLM
+  const objectionRef = script.einwaende
+    .map((e) => `  - "${e.kategorie}": ${e.antworten[0]}`)
+    .join('\n');
 
-  if (endSignals.some((s) => lower.includes(s))) return 'verabschiedung';
-  if (closingSignals.some((s) => lower.includes(s)) && currentPhase !== 'verabschiedung') return 'abschluss';
-  if (objectionSignals.some((s) => lower.includes(s)) && !['einwandbehandlung', 'verabschiedung'].includes(currentPhase)) return 'einwandbehandlung';
-  if (positiveSignals.some((s) => lower.includes(s))) {
-    const currentIdx = PHASE_ORDER.indexOf(currentPhase);
-    if (currentIdx < PHASE_ORDER.length - 1) {
-      const next = PHASE_ORDER[currentIdx + 1];
-      // Einwandbehandlung überspringen wenn nicht relevant
-      if (next === 'einwandbehandlung') return 'abschluss';
-      return next;
+  // Build all phase goals as context
+  const phaseOverview = script.abschnitte
+    .map((s) => `${s.phase}: ${s.headline}`)
+    .join(' → ');
+
+  // Current phase details
+  const currentPhaseDetails = currentSection
+    ? `Aktuelle Phase: "${currentSection.headline}"
+Beispiel-Text für diese Phase: "${currentSection.haupttext.slice(0, 300)}"
+${currentSection.varianten.length > 0 ? `Alternative Formulierung: "${currentSection.varianten[0].slice(0, 200)}"` : ''}`
+    : '';
+
+  return `Du bist ein virtueller Verkaufsberater für HeizPro, ein Unternehmen für Heizungs- und Klimatechnik in Deutschland. Du führst ein Telefonat mit einem potentiellen Kunden.
+
+# Deine Persönlichkeit
+${personalityInstruction}
+
+# Deine Rolle
+- Du sprichst immer auf Deutsch, natürlich und gesprächig wie am Telefon
+- Du heißt ${leadName ? leadName : 'der Kunde'} mit Namen wenn bekannt, sonst sprichst du höflich mit "Sie"
+- Du bist Experte für ${nicheData?.name || script.niche}
+- Dein Ziel: Einen unverbindlichen, kostenlosen Beratungstermin vereinbaren
+
+# Gesprächsphasen (in dieser Reihenfolge)
+${phaseOverview}
+
+# ${currentPhaseDetails}
+
+# Nischen-Informationen
+${nicheData ? `- Produkt: ${nicheData.name}
+- Beschreibung: ${nicheData.beschreibung}
+- Zielgruppe: ${nicheData.zielgruppe}
+- Durchschnittlicher Auftragswert: ${nicheData.durchschnittlicherAuftragswert.toLocaleString('de-DE')}€
+- Typische Conversion-Rate: ${(nicheData.conversionRate * 100).toFixed(0)}%` : ''}
+
+# Einwandbehandlung (nutze diese als Referenz bei Kundenbedenken)
+${objectionRef}
+
+# Wichtige Regeln
+- Antworte IMMER auf Deutsch, kurz und natürlich (wie am Telefon, nicht wie ein Brief)
+- Keine Aufzählungszeichen, keine Bulletpoints – du sprichst, du schreibst keinen Prospekt
+- Bleibe immer in deiner Rolle als Verkaufsberater
+- Wenn der Kunde Fragen zu Kosten oder Förderung hat, gib konkrete Zahlen
+- KfW-Förderung: bis zu 40% der Kosten, bei Wärmepumpen bis zu 7.200€
+- Wenn der Kunde einwendet, gehe darauf ein und führe zurück zum Gespräch
+- Jede Antwort soll das Gespräch voranbringen und auf einen Beratungstermin hinarbeiten
+- Halte Antworten kurz: 1-3 Sätze, maximal 60 Wörter
+
+# Ausgabe-Format
+Du MUSST als JSON antworten mit genau diesen drei Feldern:
+{
+  "message": "Deine gesprochene Antwort (kurz, natürlich, deutsch)",
+  "phase": "die aktuelle phase (eine von: ${PHASE_ORDER.join(', ')})",
+  "suggestions": ["Vorschlag 1 für Kundenantwort", "Vorschlag 2", "Vorschlag 3"]
+}
+
+Die Phase wechselst du nur wenn der Kundeninhalt das rechtfertigt:
+- Positive Signale (Interesse, Fragen) → nächste Phase
+- Einwände (Bedenken, Preis, Zeit) → einwandbehandlung
+- Terminwunsch oder Zustimmung → abschluss
+- Verabschiedung → verabschiedung
+Sonst bleibe in der aktuellen Phase.`;
+}
+
+// ============================================
+// Fallback: Template-based responses (when no OpenAI key)
+// ============================================
+function templateResponse(body: ChatRequest): NextResponse {
+  const { messages, niche, scriptId, currentPhase, leadName } = body;
+  const script = salesScripts.find((s) => s.id === scriptId) || salesScripts.find((s) => s.niche === niche);
+  if (!script) {
+    return NextResponse.json({ error: 'Skript nicht gefunden' }, { status: 400 });
+  }
+
+  const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
+  let newPhase = currentPhase;
+
+  if (messages.length === 0) {
+    newPhase = 'begruessung';
+    const section = script.abschnitte.find((s) => s.phase === 'begruessung');
+    const greeting = section
+      ? section.haupttext.replace('[Agent-Name]', 'Anna').replace('[Firma]', 'HeizPro').replace('[Ort]', 'Ihrer Region')
+      : 'Guten Tag! Mein Name ist Anna von HeizPro. Wie kann ich Ihnen heute helfen?';
+    return NextResponse.json({
+      message: greeting, phase: newPhase, phaseLabel: PHASE_LABELS[newPhase],
+      nextPhases: PHASE_ORDER, suggestions: ['Ja, ich höre zu', 'Guten Tag!', 'Was bieten Sie an?'],
+    });
+  }
+
+  if (lastUserMessage) {
+    const lower = lastUserMessage.content.toLowerCase();
+    const endSignals = ['tschüss', 'auf wiedersehen', 'danke', 'bis dann', 'fertig', 'ende'];
+    const closingSignals = ['termin', 'vereinbaren', 'angebot', 'klingt gut', 'weiter', 'machen wir', 'abschließen', 'unterschreiben', 'wann', 'passt'];
+    const objectionSignals = ['teuer', 'zu viel', 'nicht', 'nein', 'kein interesse', 'bedenken', 'zweifel', 'anderes mal', 'warten', 'überlegen', 'laut', 'unverständlich', 'funktioniert nicht', 'ungeeignet', 'schlecht'];
+    const positiveSignals = ['ja', 'gerne', 'interessiert', 'gut', 'super', 'okay', 'richtig', 'genau', 'stimmt', 'natürlich', 'klar', 'sicher', 'warum nicht', 'zeigt mir', 'erzählen sie', 'mehr darüber', 'termin', 'angebot', 'beratung'];
+
+    if (endSignals.some((s) => lower.includes(s))) newPhase = 'verabschiedung';
+    else if (closingSignals.some((s) => lower.includes(s)) && currentPhase !== 'verabschiedung') newPhase = 'abschluss';
+    else if (objectionSignals.some((s) => lower.includes(s)) && !['einwandbehandlung', 'verabschiedung'].includes(currentPhase)) newPhase = 'einwandbehandlung';
+    else if (positiveSignals.some((s) => lower.includes(s))) {
+      const idx = PHASE_ORDER.indexOf(currentPhase);
+      if (idx < PHASE_ORDER.length - 1) {
+        const next = PHASE_ORDER[idx + 1];
+        newPhase = next === 'einwandbehandlung' ? 'abschluss' : next;
+      }
     }
   }
 
-  return currentPhase;
-}
-
-function detectObjectionCategory(userMessage: string): string {
-  const lower = userMessage.toLowerCase();
-  if (lower.includes('teuer') || lower.includes('kosten') || lower.includes('preis') || lower.includes('bezahl')) return 'Kosten';
-  if (lower.includes('leistung') || lower.includes('heizt nicht') || lower.includes('kalt') || lower.includes('stark genug')) return 'Leistung';
-  if (lower.includes('isoliert') || lower.includes('altbau') || lower.includes('dämmung') || lower.includes('haus')) return 'Gebäude';
-  if (lower.includes('warten') || lower.includes('später') || lower.includes('zeitpunkt') || lower.includes('überlegen')) return 'Zeitpunkt';
-  if (lower.includes('laut') || lower.includes('geräusch') || lower.includes('lärm')) return 'Lärm';
-  if (lower.includes('gesund') || lower.includes('krank') || lower.includes('luft') || lower.includes('zugluft')) return 'Gesundheit';
-  if (lower.includes('gesetz') || lower.includes('pflicht') || lower.includes('vorschrift')) return 'Gesetzgebung';
-  return 'Allgemein';
-}
-
-function getObjectionResponse(niche: string, kategorie: string): string {
-  const script = salesScripts.find((s) => s.niche === niche);
-  if (!script) return 'Das verstehe ich vollkommen. Lassen Sie uns das im Beratungsgespräch genauer klären.';
-  const objection = script.einwaende.find((e) => e.kategorie === kategorie);
-  if (!objection) {
-    const any = script.einwaende[0];
-    return any ? any.antworten[0] : 'Das ist ein berechtigter Punkt. Gerne können wir das in einem persönlichen Gespräch vertiefen.';
+  let responseText = '';
+  if (newPhase === 'einwandbehandlung') {
+    const lower = lastUserMessage?.content.toLowerCase() || '';
+    let kategorie = 'Allgemein';
+    if (lower.includes('teuer') || lower.includes('kosten') || lower.includes('preis')) kategorie = 'Kosten';
+    else if (lower.includes('leistung') || lower.includes('heizt nicht') || lower.includes('kalt')) kategorie = 'Leistung';
+    else if (lower.includes('isoliert') || lower.includes('altbau') || lower.includes('dämmung')) kategorie = 'Gebäude';
+    else if (lower.includes('warten') || lower.includes('später') || lower.includes('überlegen')) kategorie = 'Zeitpunkt';
+    else if (lower.includes('laut') || lower.includes('geräusch') || lower.includes('lärm')) kategorie = 'Lärm';
+    const objection = script.einwaende.find((e) => e.kategorie === kategorie);
+    responseText = objection ? objection.antworten[0] : 'Das verstehe ich vollkommen. Lassen Sie uns das im Beratungsgespräch genauer klären.';
+  } else {
+    const section = script.abschnitte.find((s) => s.phase === newPhase);
+    if (section) {
+      const templates = [section.haupttext, ...section.varianten];
+      responseText = templates[Math.floor(Math.random() * templates.length)]
+        .replace(/\[Agent-Name\]/g, 'Anna').replace(/\[Firma\]/g, 'HeizPro')
+        .replace(/\[Ort\]/g, 'Ihrer Region').replace(/\[Name\]/g, leadName || 'Herr/Frau')
+        .replace(/\[Tag\]/g, 'Donnerstag').replace(/\[Uhrzeit\]/g, '15:00');
+    } else {
+      responseText = 'Vielen Dank für Ihre Zeit! Gibt es noch etwas, das ich für Sie klären kann?';
+      newPhase = 'verabschiedung';
+    }
   }
-  return objection.antworten[Math.floor(Math.random() * objection.antworten.length)];
+
+  if (lastUserMessage) {
+    const lower = lastUserMessage.content.toLowerCase();
+    if (lower.includes('förderung') || lower.includes('kfw') || lower.includes('zuschuss')) {
+      responseText += ' Übrigens: Die KfW fördert aktuell mit bis zu 40% der Kosten. Das sind bei einer Wärmepumpe bis zu 7.200€ Einsparung!';
+    }
+    if (lower.includes('was kostet') || lower.includes('wie teuer') || lower.includes('preis')) {
+      const nc = nicheConfigs.find((n) => n.id === niche);
+      if (nc) responseText += ` Die Investition liegt bei ca. ${nc.durchschnittlicherAuftragswert.toLocaleString('de-DE')}€ – inklusive Installation.`;
+    }
+  }
+
+  const suggestions = getSuggestions(newPhase);
+  return NextResponse.json({
+    message: responseText, phase: newPhase, phaseLabel: PHASE_LABELS[newPhase],
+    nextPhases: PHASE_ORDER, suggestions,
+  });
 }
 
+function getSuggestions(phase: string): string[] {
+  switch (phase) {
+    case 'begruessung': return ['Ja, ich habe eine alte Heizung', 'Was bieten Sie an?', 'Ich bin nicht interessiert'];
+    case 'bedarfsanalyse': return ['Meine Heizung ist von 1998', 'Ich habe eine Gasheizung', 'Die Heizkosten sind sehr hoch'];
+    case 'praesentation': return ['Wie viel kostet das?', 'Gibt es Förderung?', 'Klingt interessant, erzählen Sie mehr'];
+    case 'einwandbehandlung': return ['Das überzeugt mich', 'Ich möchte trotzdem warten', 'Gibt es Alternativen?'];
+    case 'abschluss': return ['Termin am Donnerstag passt', 'Senden Sie mir ein Angebot', 'Ich brauche noch Bedenkzeit'];
+    case 'verabschiedung': return ['Vielen Dank!', 'Ich freue mich auf den Termin', 'Auf Wiedersehen!'];
+    default: return ['Interessant', 'Erzählen Sie mehr', 'Was kostet das?'];
+  }
+}
+
+// ============================================
+// POST Handler
+// ============================================
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { messages, niche, scriptId, currentPhase, leadName } = body;
+    const { messages, niche, scriptId, currentPhase, leadName, personality } = body;
+
+    const client = getOpenAIClient();
+
+    // Fallback to templates if no OpenAI key
+    if (!client) {
+      return templateResponse(body);
+    }
 
     const script = salesScripts.find((s) => s.id === scriptId) || salesScripts.find((s) => s.niche === niche);
     if (!script) {
       return NextResponse.json({ error: 'Skript nicht gefunden' }, { status: 400 });
     }
 
-    const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
-    let newPhase = currentPhase;
+    const nicheConfig = nicheConfigs.find((n) => n.id === niche);
 
-    // Erste Nachricht: Begrüßung
-    if (messages.length === 0) {
-      newPhase = 'begruessung';
-      const section = script.abschnitte.find((s) => s.phase === 'begruessung');
-      const greeting = section
-        ? section.haupttext.replace('[Agent-Name]', 'Anna').replace('[Firma]', 'HeizPro').replace('[Ort]', 'Ihrer Region')
-        : 'Guten Tag! Mein Name ist Anna von HeizPro. Wie kann ich Ihnen heute helfen?';
+    // Build system prompt
+    const systemPrompt = buildSystemPrompt({
+      script,
+      nicheConfig,
+      personality: personality || 'beratend',
+      currentPhase,
+      leadName,
+    });
 
-      return NextResponse.json({
-        message: greeting,
-        phase: newPhase,
-        phaseLabel: 'Begrüßung',
-        nextPhases: PHASE_ORDER,
-        suggestions: ['Ja, ich höre zu', 'Guten Tag!', 'Was bieten Sie an?'],
-      });
+    // Convert message history to OpenAI format (cap at last 20 messages)
+    const recentMessages = messages.slice(-20);
+    const openaiMessages: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...recentMessages.map((m) => ({
+        role: (m.role === 'agent' ? 'assistant' : 'user') as 'assistant' | 'user',
+        content: m.content,
+      })),
+    ];
+
+    // Call OpenAI
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const completion = await client.chat.completions.create({
+      model,
+      messages: openaiMessages,
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+
+    const rawContent = completion.choices[0]?.message?.content || '{}';
+
+    // Parse structured response
+    let parsed: { message?: string; phase?: string; suggestions?: string[] };
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      // If JSON parsing fails, use raw content as message
+      parsed = { message: rawContent, phase: currentPhase, suggestions: getSuggestions(currentPhase) };
     }
 
-    // Phasen-Erkennung basierend auf User-Antwort
-    if (lastUserMessage) {
-      newPhase = detectPhase(lastUserMessage.content, currentPhase);
-    }
-
-    let responseText = '';
-
-    // Einwandbehandlung
-    if (newPhase === 'einwandbehandlung') {
-      const kategorie = lastUserMessage ? detectObjectionCategory(lastUserMessage.content) : 'Allgemein';
-      responseText = getObjectionResponse(niche, kategorie);
-    } else {
-      // Normale Phasen-Antwort
-      const section = script.abschnitte.find((s) => s.phase === newPhase);
-      if (section) {
-        const templates = [section.haupttext, ...section.varianten];
-        const template = templates[Math.floor(Math.random() * templates.length)];
-        responseText = template
-          .replace(/\[Agent-Name\]/g, 'Anna')
-          .replace(/\[Firma\]/g, 'HeizPro')
-          .replace(/\[Ort\]/g, 'Ihrer Region')
-          .replace(/\[Name\]/g, leadName || 'Herr/Frau')
-          .replace(/\[Tag\]/g, 'Donnerstag')
-          .replace(/\[Uhrzeit\]/g, '15:00');
-      } else {
-        responseText = 'Vielen Dank für Ihre Zeit! Gibt es noch etwas, das ich für Sie klären kann?';
-        newPhase = 'verabschiedung';
-      }
-    }
-
-    // Kontextuelle Anpassungen basierend auf User-Nachricht
-    if (lastUserMessage) {
-      const lower = lastUserMessage.content.toLowerCase();
-
-      // Wenn User nach Förderung fragt
-      if (lower.includes('förderung') || lower.includes('kfW') || lower.includes('zuschuss')) {
-        responseText += ' Übrigens: Die KfW fördert aktuell mit bis zu 40% der Kosten. Das sind bei einer Wärmepumpe bis zu 7.200€ Einsparung!';
-      }
-
-      // Wenn User nach Kosten fragt
-      if (lower.includes('was kostet') || lower.includes('wie teuer') || lower.includes('preis')) {
-        const nicheConfig = nicheConfigs.find((n) => n.id === niche);
-        if (nicheConfig) {
-          responseText += ` Die Investition liegt je nach Ausführung bei ca. ${nicheConfig.durchschnittlicherAuftragswert.toLocaleString('de-DE')}€ – inklusive Installation.`;
-        }
-      }
-    }
-
-    // Vorschläge für die nächste Antwort
-    const suggestions = getSuggestions(newPhase);
+    const responseMessage = parsed.message || 'Vielen Dank für Ihre Antwort. Wie kann ich Ihnen weiterhelfen?';
+    const responsePhase = PHASE_ORDER.includes(parsed.phase || '') ? parsed.phase! : currentPhase;
+    const responseSuggestions = Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
+      ? parsed.suggestions.slice(0, 3)
+      : getSuggestions(responsePhase);
 
     return NextResponse.json({
-      message: responseText,
-      phase: newPhase,
-      phaseLabel: PHASE_ORDER.indexOf(newPhase) >= 0
-        ? ['Begrüßung', 'Bedarfsanalyse', 'Präsentation', 'Einwandbehandlung', 'Abschluss', 'Verabschiedung'][PHASE_ORDER.indexOf(newPhase)]
-        : newPhase,
+      message: responseMessage,
+      phase: responsePhase,
+      phaseLabel: PHASE_LABELS[responsePhase],
       nextPhases: PHASE_ORDER,
-      suggestions,
+      suggestions: responseSuggestions,
     });
   } catch (error) {
     console.error('[Chat API] Error:', error);
-    return NextResponse.json(
-      { error: 'Fehler bei der Gesprächsverarbeitung', details: error instanceof Error ? error.message : 'Unknown' },
-      { status: 500 }
-    );
-  }
-}
 
-function getSuggestions(phase: string): string[] {
-  switch (phase) {
-    case 'begruessung':
-      return ['Ja, ich habe eine alte Heizung', 'Was bieten Sie an?', 'Ich bin nicht interessiert'];
-    case 'bedarfsanalyse':
-      return ['Meine Heizung ist von 1998', 'Ich habe eine Gasheizung', 'Die Heizkosten sind sehr hoch', 'Wie alt ist zu alt?'];
-    case 'praesentation':
-      return ['Wie viel kostet das?', 'Gibt es Förderung?', 'Klingt interessant, erzählen Sie mehr', ' Funktioniert das auch im Altbau?'];
-    case 'einwandbehandlung':
-      return ['Das überzeugt mich', 'Ich möchte trotzdem warten', 'Lassen Sie mich überlegen', 'Gibt es Alternativen?'];
-    case 'abschluss':
-      return ['Termin am Donnerstag passt', 'Können Sie nächste Woche?', 'Senden Sie mir ein Angebot', 'Ich brauche noch Bedenkzeit'];
-    case 'verabschiedung':
-      return ['Vielen Dank!', 'Ich freue mich auf den Termin', 'Auf Wiedersehen!'];
-    default:
-      return ['Interessant', 'Erzählen Sie mehr', 'Was kostet das?'];
+    // If OpenAI fails, try template fallback
+    try {
+      const body: ChatRequest = await request.clone().json();
+      return templateResponse(body);
+    } catch {
+      return NextResponse.json(
+        { error: 'Fehler bei der Gesprächsverarbeitung', details: error instanceof Error ? error.message : 'Unknown' },
+        { status: 500 }
+      );
+    }
   }
 }
