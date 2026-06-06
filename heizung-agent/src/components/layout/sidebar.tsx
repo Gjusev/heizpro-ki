@@ -3,23 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Bot,
-  Phone,
-  FileText,
-  Flame,
-  Menu,
-  X,
-  Mic,
-} from 'lucide-react';
+  SquaresFour, Robot, Phone, FileText, Flame, List, X, Microphone
+} from '@phosphor-icons/react/dist/ssr';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 const navItems = [
-  { href: '/', label: 'Sprachassistent', icon: Mic, highlight: true },
+  { href: '/', label: 'Sprachassistent', icon: Microphone, highlight: true },
   { href: '/calls', label: 'Gespräche', icon: Phone },
   { href: '/scripts', label: 'Skripte', icon: FileText },
-  { href: '/agents', label: 'Agenten', icon: Bot },
+  { href: '/agents', label: 'Agenten', icon: Robot },
 ];
 
 export function Sidebar() {
@@ -60,17 +53,17 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200',
+                  'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200',
                   isActive && highlight
-                    ? 'bg-gradient-to-r from-orange-500/20 to-red-500/10 text-orange-400'
+                    ? 'bg-gradient-to-r from-orange-500/20 to-red-500/10 text-orange-400 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-4 before:rounded-full before:bg-orange-400'
                     : isActive
-                    ? 'bg-white/5 text-white'
+                    ? 'bg-white/5 text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-4 before:rounded-full before:bg-white/40'
                     : highlight && !collapsed
-                    ? 'text-orange-300/80 border border-orange-500/15 bg-orange-500/5 hover:bg-orange-500/10'
-                    : 'text-stone-500 hover:text-stone-300 hover:bg-white/5'
+                    ? 'text-orange-300/80 border border-orange-500/15 bg-orange-500/5 hover:bg-orange-500/10 hover:translate-x-0.5'
+                    : 'text-stone-500 hover:text-stone-300 hover:bg-white/5 hover:translate-x-0.5'
                 )}
               >
-                <item.icon className={cn('w-[18px] h-[18px] shrink-0')} />
+                <item.icon size={18} weight={isActive ? 'fill' : 'regular'} className="shrink-0" />
                 {!collapsed && <span>{item.label}</span>}
                 {highlight && !isActive && !collapsed && (
                   <span className="ml-auto text-[9px] uppercase tracking-wider bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full font-semibold">Live</span>
@@ -97,7 +90,7 @@ export function Sidebar() {
         onClick={() => setCollapsed(false)}
         className={cn('fixed top-4 left-4 z-40 p-2 rounded-xl bg-[var(--dark)] text-white shadow-lg lg:hidden', !collapsed && 'hidden')}
       >
-        <Menu className="w-5 h-5" />
+        <List className="w-5 h-5" />
       </button>
     </>
   );

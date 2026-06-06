@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { getCalls, deleteCall } from '@/lib/store';
 import { formatDuration, formatDate, formatTime, cn } from '@/lib/utils';
 import { nicheConfigs } from '@/lib/sales-scripts';
-import { Phone, Clock, ChevronDown, ChevronUp, Trash2, MessageSquare, Bot, User, Calendar } from 'lucide-react';
+import {
+  Phone, Clock, CaretDown, CaretUp, Trash, ChatCircle, Robot, User, CalendarBlank
+} from '@phosphor-icons/react/dist/ssr';
 import type { Call } from '@/types';
 
 export default function CallsPage() {
@@ -37,29 +39,41 @@ export default function CallsPage() {
           <p className="text-stone-500 text-sm mt-2">Alle simulierten Verkaufsgespräche mit vollständigen Transkriptionen</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Gespräche', value: calls.length, icon: Phone },
-            { label: 'Nachrichten', value: totalMsgs, icon: MessageSquare },
-            { label: 'Gesamtdauer', value: formatDuration(totalDuration), icon: Clock },
-          ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 border border-stone-200/80">
-              <div className="flex items-center gap-2 mb-2">
-                <s.icon className="w-4 h-4 text-stone-400" />
-                <span className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">{s.label}</span>
-              </div>
-              <p className="text-2xl font-bold text-stone-900">{s.value}</p>
+        {/* Stats — asymmetric layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl p-6 card-elevated flex items-center gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+              <Phone size={28} weight="duotone" className="text-orange-400" />
             </div>
-          ))}
+            <div>
+              <span className="text-[11px] uppercase tracking-[0.15em] text-stone-500 font-medium">Gespräche gesamt</span>
+              <p className="text-4xl font-bold mt-0.5">{calls.length}</p>
+              <p className="text-xs text-stone-500 mt-1">{formatDuration(totalDuration)} Gesamtdauer</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-stone-200/80 card-elevated flex flex-col justify-between">
+            <div className="flex items-center gap-2 mb-2">
+              <ChatCircle size={16} weight="duotone" className="text-stone-400" />
+              <span className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Nachrichten</span>
+            </div>
+            <p className="text-3xl font-bold text-stone-900">{totalMsgs}</p>
+          </div>
         </div>
 
         {/* Call list */}
         <div className="space-y-2">
           {calls.length === 0 && (
             <div className="text-center py-20">
-              <Phone className="w-12 h-12 text-stone-200 mx-auto mb-4" />
-              <p className="text-stone-400 text-sm">Noch keine Gespräche. Starten Sie Ihr erstes Gespräch im Sprachassistenten.</p>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center mx-auto mb-5">
+                <Phone size={32} weight="duotone" className="text-orange-400" />
+              </div>
+              <h3 className="text-stone-700 text-base font-semibold mb-1">Noch keine Gespräche</h3>
+              <p className="text-stone-400 text-sm max-w-xs mx-auto mb-5">
+                Starten Sie Ihr erstes Gespräch im Sprachassistenten und es erscheint hier.
+              </p>
+              <a href="/" className="inline-flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-colors">
+                Gespräch starten
+              </a>
             </div>
           )}
 
@@ -67,7 +81,7 @@ export default function CallsPage() {
             const isOpen = expandedId === call.id;
             const niche = nicheConfigs.find((n) => n.id === call.skriptId?.split('-')[1]?.replace('script-', '') || '');
             return (
-              <div key={call.id} className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden">
+              <div key={call.id} className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden card-elevated cursor-pointer">
                 {/* Header */}
                 <div className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-stone-50/50 transition-colors"
                   onClick={() => setExpandedId(isOpen ? null : call.id)}>
@@ -96,9 +110,9 @@ export default function CallsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(call.id); }}
                       className="p-2 rounded-lg hover:bg-red-50 text-stone-300 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
+                      <Trash className="w-4 h-4" />
                     </button>
-                    {isOpen ? <ChevronUp className="w-4 h-4 text-stone-400" /> : <ChevronDown className="w-4 h-4 text-stone-400" />}
+                    {isOpen ? <CaretUp className="w-4 h-4 text-stone-400" /> : <CaretDown className="w-4 h-4 text-stone-400" />}
                   </div>
                 </div>
 
@@ -111,7 +125,7 @@ export default function CallsPage() {
                         <div key={t.id} className={cn('flex gap-2.5', t.sprecher === 'agent' ? 'justify-start' : 'justify-end')}>
                           {t.sprecher === 'agent' && (
                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shrink-0 mt-0.5">
-                              <Bot className="w-3 h-3 text-white" />
+                              <Robot className="w-3 h-3 text-white" />
                             </div>
                           )}
                           <div className={cn(

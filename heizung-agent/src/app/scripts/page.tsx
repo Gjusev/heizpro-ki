@@ -6,8 +6,8 @@ import { getAgent, saveAgent } from '@/lib/store';
 import { nicheConfigs } from '@/lib/sales-scripts';
 import { cn } from '@/lib/utils';
 import {
-  FileText, Plus, Edit3, Trash2, ChevronDown, ChevronUp, Copy, Save, X, Phone, Shield, MessageSquare, Check
-} from 'lucide-react';
+  FileText, Plus, PencilSimple, Trash, CaretDown, CaretUp, Copy, FloppyDisk, X, Phone, Shield, ChatCircle, Check
+} from '@phosphor-icons/react/dist/ssr';
 import type { SalesScript, ScriptSection, Objection, ScriptPhase } from '@/types';
 
 const PHASES: { value: ScriptPhase; label: string }[] = [
@@ -175,13 +175,13 @@ export default function ScriptsPage() {
 
         {/* EDITOR */}
         {editingId && editData && (
-          <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden card-elevated">
             <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
               <h2 className="font-semibold text-stone-900">Skript bearbeiten</h2>
               <div className="flex items-center gap-2">
                 <button onClick={handleSave}
                   className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
-                  <Save className="w-4 h-4" /> Speichern
+                  <FloppyDisk className="w-4 h-4" /> Speichern
                 </button>
                 <button onClick={() => { setEditingId(null); setEditData(null); }}
                   className="p-2 rounded-lg hover:bg-stone-100 text-stone-400 transition-colors">
@@ -344,7 +344,7 @@ export default function ScriptsPage() {
                     </button>
                     <button onClick={() => { setEditingId(script.id); setEditData({ ...script }); }}
                       className="p-2 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors">
-                      <Edit3 className="w-4 h-4" />
+                      <PencilSimple className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDuplicate(script)}
                       className="p-2 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors">
@@ -352,7 +352,7 @@ export default function ScriptsPage() {
                     </button>
                     <button onClick={() => handleDelete(script.id)}
                       className="p-2 rounded-lg hover:bg-red-50 text-stone-300 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
+                      <Trash className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

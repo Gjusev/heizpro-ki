@@ -7,9 +7,9 @@ import { nicheConfigs } from '@/lib/sales-scripts';
 import { getScripts, saveCall, getAgents, getActiveAgentId } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import {
-  Mic, MicOff, Phone, PhoneOff, Volume2, VolumeX, Bot, User,
-  Clock, Target, ArrowRight, Headphones, BarChart3, Languages, Zap
-} from 'lucide-react';
+  Microphone, MicrophoneSlash, Phone, PhoneDisconnect, SpeakerHigh, SpeakerSlash, Robot, User,
+  Clock, Target, ArrowRight, Headphones, ChartBar, Translate, Lightning
+} from '@phosphor-icons/react/dist/ssr';
 import type { Niche, SalesScript, Call, CallTranscript } from '@/types';
 
 const PHASE_META: Record<string, { label: string; color: string }> = {
@@ -45,7 +45,7 @@ const VoiceBars = () => (
 const TypingIndicator = () => (
   <div className="flex gap-2.5 justify-start">
     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shrink-0">
-      <Bot className="w-3 h-3 text-white" />
+      <Robot className="w-3 h-3 text-white" />
     </div>
     <div className="bg-white rounded-2xl rounded-tl-lg px-4 py-2.5 shadow-sm border border-stone-100">
       <div className="flex gap-1.5">
@@ -61,10 +61,10 @@ const TypingIndicator = () => (
 // Mode badge component
 const ModeBadge = ({ mode }: { mode: string }) => {
   const config = {
-    'speech-engine': { label: 'Speech Engine', color: 'bg-emerald-500', icon: Zap },
+    'speech-engine': { label: 'Speech Engine', color: 'bg-emerald-500', icon: Lightning },
     'tts': { label: 'ElevenLabs', color: 'bg-orange-500', icon: Headphones },
-    'browser': { label: 'Browser', color: 'bg-stone-400', icon: Volume2 },
-  }[mode] || { label: 'Browser', color: 'bg-stone-400', icon: Volume2 };
+    'browser': { label: 'Browser', color: 'bg-stone-400', icon: SpeakerHigh },
+  }[mode] || { label: 'Browser', color: 'bg-stone-400', icon: SpeakerHigh };
   const Icon = config.icon;
   return (
     <div className="flex items-center gap-1.5 text-[9px] text-stone-400">
@@ -236,7 +236,7 @@ export default function SimulatorPage() {
                     )}>
                     <div className={cn('w-5 h-5 rounded-md bg-gradient-to-br flex items-center justify-center',
                       i === 0 ? 'from-orange-500 to-red-600' : 'from-blue-500 to-indigo-600')}>
-                      <Bot className="w-2.5 h-2.5 text-white" />
+                      <Robot size={10} weight="fill" className="text-white" />
                     </div>
                     {a.name.split('–')[0].trim()}
                   </button>
@@ -248,9 +248,9 @@ export default function SimulatorPage() {
             {!callActive && (
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-stone-400 text-xs">
                 {[
-                  { icon: voice.mode === 'speech-engine' ? Zap : Headphones, text: voice.mode === 'speech-engine' ? 'Speech Engine' : 'ElevenLabs Stimme' },
-                  { icon: Languages, text: 'Deutsch (de-DE)' },
-                  { icon: BarChart3, text: '8 Nischen' },
+                  { icon: voice.mode === 'speech-engine' ? Lightning : Headphones, text: voice.mode === 'speech-engine' ? 'Speech Engine' : 'ElevenLabs Stimme' },
+                  { icon: Translate, text: 'Deutsch (de-DE)' },
+                  { icon: ChartBar, text: '8 Nischen' },
                 ].map((f, i) => (
                   <div key={i} className="flex items-center gap-1.5">
                     <f.icon className="w-3.5 h-3.5" />{f.text}
@@ -269,7 +269,7 @@ export default function SimulatorPage() {
               <div className={cn('px-4 py-3 flex items-center justify-between transition-all duration-500', callActive ? 'bg-stone-900 text-white' : 'bg-stone-50/80')}>
                 <div className="flex items-center gap-2.5">
                   <div className={cn('w-8 h-8 rounded-full flex items-center justify-center transition-colors', callActive ? 'bg-emerald-500/20' : 'bg-stone-200')}>
-                    <Bot className={cn('w-4 h-4', callActive ? 'text-emerald-400' : 'text-stone-500')} />
+                    <Robot size={16} weight="fill" className={cn(callActive ? 'text-emerald-400' : 'text-stone-500')} />
                   </div>
                   <div>
                     <p className="text-xs font-semibold leading-tight truncate max-w-[180px]">{activeAgent?.name || activeScript?.name || 'HeizPro KI'}</p>
@@ -315,7 +315,7 @@ export default function SimulatorPage() {
                     </p>
                     {voice.mode === 'speech-engine' && (
                       <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[9px] font-medium">
-                        <Zap className="w-2.5 h-2.5" />
+                        <Lightning className="w-2.5 h-2.5" />
                         Echtzeit-Sprachmodus aktiv
                       </div>
                     )}
@@ -329,7 +329,7 @@ export default function SimulatorPage() {
                       className={cn('flex gap-2', msg.role === 'agent' ? 'justify-start' : 'justify-end')}>
                       {msg.role === 'agent' && (
                         <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <Bot className="w-2.5 h-2.5 text-white" />
+                          <Robot size={10} weight="fill" className="text-white" />
                         </div>
                       )}
                       <div className={cn(
@@ -355,7 +355,7 @@ export default function SimulatorPage() {
                 {voice.isListening && callActive && (
                   <motion.div className="flex items-center justify-center py-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-[10px] font-medium">
-                      <Mic className="w-2.5 h-2.5 animate-pulse" />
+                      <Microphone className="w-2.5 h-2.5 animate-pulse" />
                       {voice.currentTranscript || 'Hoert zu...'}
                     </div>
                   </motion.div>
@@ -395,16 +395,16 @@ export default function SimulatorPage() {
                     <motion.button onClick={() => voice.isListening ? voice.stopListening() : voice.startListening()} disabled={voice.isSpeaking} whileTap={{ scale: 0.9 }}
                       className={cn('w-10 h-10 rounded-full flex items-center justify-center transition-colors',
                         voice.isListening ? 'bg-blue-500 text-white shadow-lg' : voice.isSpeaking ? 'bg-stone-100 text-stone-300' : 'bg-stone-100 text-stone-500')}>
-                      {voice.isListening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                      {voice.isListening ? <Microphone className="w-4 h-4" /> : <MicrophoneSlash className="w-4 h-4" />}
                     </motion.button>
                     <motion.button onClick={endCall} whileTap={{ scale: 0.9 }}
                       className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-500/20">
-                      <PhoneOff className="w-5 h-5" />
+                      <PhoneDisconnect className="w-5 h-5" />
                     </motion.button>
                     <motion.button onClick={() => voice.stopSpeaking()} whileTap={{ scale: 0.9 }}
                       className={cn('w-10 h-10 rounded-full flex items-center justify-center transition-colors',
                         voice.isSpeaking ? 'bg-orange-500 text-white shadow-lg' : 'bg-stone-100 text-stone-400')}>
-                      {voice.isSpeaking ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                      {voice.isSpeaking ? <SpeakerHigh className="w-4 h-4" /> : <SpeakerSlash className="w-4 h-4" />}
                     </motion.button>
                   </>
                 )}
@@ -417,8 +417,8 @@ export default function SimulatorPage() {
       {/* BENTO */}
       {!callActive && (
         <section className="px-5 lg:px-12 pb-12">
-          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-2.5" style={{ gridAutoFlow: 'dense' }}>
-            <div className="md:col-span-3 md:row-span-2 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl p-6 md:p-8 flex flex-col justify-between min-h-[260px] md:min-h-[320px]">
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-2.5" style={{ gridAutoFlow: 'dense' }}>
+            <div className="col-span-2 row-span-2 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl p-6 md:p-8 flex flex-col justify-between min-h-[260px] md:min-h-[320px]">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-medium mb-2">Echtzeit-Sprachinteraktion</p>
                 <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-2">
@@ -430,21 +430,37 @@ export default function SimulatorPage() {
               </div>
               <VoiceBars />
             </div>
-            <div className="md:col-span-2 bg-orange-50 border border-orange-100 rounded-2xl p-5 md:p-6 flex flex-col justify-between">
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="w-3.5 h-3.5 text-orange-600" />
+                <Target size={14} weight="duotone" className="text-orange-600" />
                 <span className="text-[10px] uppercase tracking-[0.15em] text-orange-600 font-medium">Nischen</span>
               </div>
-              <p className="text-3xl md:text-4xl font-bold text-orange-700">8</p>
-              <p className="text-xs text-orange-600/60 mt-1">Fachbereiche — Waermepumpe bis Sanitaer</p>
+              <p className="text-3xl font-bold text-orange-700">8</p>
+              <p className="text-xs text-orange-600/60 mt-1">Fachbereiche</p>
             </div>
-            <div className="md:col-span-2 bg-white border border-stone-200/80 rounded-2xl p-5 md:p-6 flex flex-col justify-between">
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-5 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-2">
-                <Languages className="w-3.5 h-3.5 text-stone-500" />
+                <Translate size={14} weight="duotone" className="text-stone-500" />
                 <span className="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-medium">Sprache</span>
               </div>
-              <p className="text-3xl md:text-4xl font-bold text-stone-900">DE</p>
-              <p className="text-xs text-stone-400 mt-1">Professionelle Sprachausgabe auf Deutsch</p>
+              <p className="text-3xl font-bold text-stone-900">DE</p>
+              <p className="text-xs text-stone-400 mt-1">Deutsch de-DE</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex flex-col justify-between">
+              <div className="flex items-center gap-2 mb-2">
+                <Robot size={14} weight="duotone" className="text-blue-600" />
+                <span className="text-[10px] uppercase tracking-[0.15em] text-blue-600 font-medium">Agenten</span>
+              </div>
+              <p className="text-3xl font-bold text-blue-700">2</p>
+              <p className="text-xs text-blue-600/60 mt-1">Anna beratend, Max energisch</p>
+            </div>
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-5 flex flex-col justify-between">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightning size={14} weight="duotone" className="text-stone-500" />
+                <span className="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-medium">Modi</span>
+              </div>
+              <p className="text-3xl font-bold text-stone-900">3</p>
+              <p className="text-xs text-stone-400 mt-1">Engine, TTS, Browser</p>
             </div>
           </div>
         </section>

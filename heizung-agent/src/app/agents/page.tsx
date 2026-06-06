@@ -6,7 +6,9 @@ import { getScripts } from '@/lib/store';
 import { nicheConfigs } from '@/lib/sales-scripts';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Bot, Save, Check, Volume2, Clock, FileText, Phone, Zap, Users } from 'lucide-react';
+import {
+  Robot, FloppyDisk, Check, SpeakerHigh, Clock, FileText, Phone, Lightning, Users
+} from '@phosphor-icons/react/dist/ssr';
 import type { AgentConfig, AgentPersoenlichkeit } from '@/types';
 
 export default function AgentsPage() {
@@ -70,7 +72,7 @@ export default function AgentsPage() {
           </div>
           <button onClick={handleSave}
             className="flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-colors shadow-sm">
-            <Save className="w-4 h-4" /> Speichern
+            <FloppyDisk className="w-4 h-4" /> Speichern
           </button>
         </div>
 
@@ -105,12 +107,12 @@ export default function AgentsPage() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1, duration: 0.4 }}
-              className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden">
+              className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden card-elevated">
 
               {/* Agent header */}
               <div className={cn('px-5 py-5 flex items-center gap-4', i === 0 ? 'bg-stone-900 text-white' : 'bg-stone-800 text-white')}>
                 <div className={cn('w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg shrink-0', GRADIENTS[i])}>
-                  <Bot className="w-6 h-6 text-white" />
+                  <Robot className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -130,7 +132,7 @@ export default function AgentsPage() {
                 {/* Personality */}
                 <div>
                   <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2.5">
-                    <Volume2 className="w-3 h-3" /> Stil
+                    <SpeakerHigh className="w-3 h-3" /> Stil
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {(['beratend', 'vertrauensvoll', 'energisch', 'ruhig'] as AgentPersoenlichkeit[]).map((p) => (
