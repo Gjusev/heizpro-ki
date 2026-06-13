@@ -1,0 +1,2 @@
+# Playwright MCP artifacts (local browser-test snapshots/logs) — never commit
+.playwright-mcp/
