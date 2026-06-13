@@ -5,14 +5,16 @@ import { createRoot } from 'react-dom/client';
 import { useVoice } from '@/lib/use-voice';
 
 /**
- * Regression test for the turn-taking bug ("lanza el mensaje antes de acabar de
- * hablar"). The agent must react to a FINAL, complete utterance only — never to
- * interim/partial speech results. Before the fix, page.tsx reacted to every
- * interim `currentTranscript` change and launched the response on the first
- * fragment ("ich", "ja" ...) before the user had finished speaking.
+ * Regression tests for end-of-turn detection in continuous mode.
  *
- * The browser mic/STT cannot be driven headlessly, so we mock SpeechRecognition
- * and assert the hook only emits a final transcript on isFinal results.
+ * The recognizer runs with continuous=true so the user can pause between clauses.
+ * The hook must:
+ *  - NOT emit while speech is still arriving (within the silence debounce),
+ *  - accumulate multiple clauses into ONE turn,
+ *  - emit the full transcript only after the user goes silent for TURN_SILENCE_MS,
+ *  - never emit an empty/whitespace turn.
+ *
+ * (The browser mic/STT cannot be driven headlessly, so SpeechRecognition is mocked.)
  */
 
 let instances: any[] = [];
@@ -33,11 +35,18 @@ class MockRecognition {
   abort() {}
 }
 
-function makeResultEvent(transcript: string, isFinal: boolean) {
-  const result = [{ transcript }, { transcript }] as any;
-  result.isFinal = isFinal;
-  return { results: [result] };
+// Build a SpeechRecognitionResultList-like event from ordered entries.
+function evt(...items: { t: string; final: boolean }[]) {
+  const results = items.map((it) => {
+    const r = [{ transcript: it.t }, { transcript: it.t }] as any;
+    r.isFinal = it.final;
+    return r;
+  });
+  return { results };
 }
+
+// TURN_SILENCE_MS is 800 in the hook; wait past it to let the debounce fire.
+const SILENCE = 1100;
 
 beforeEach(() => {
   instances = [];
@@ -66,45 +75,48 @@ function mountWith(spy: (t: string) => void) {
   function Harness() { useVoice({ onFinalTranscript: spy }); return null; }
   act(() => { root.render(React.createElement(Harness)); });
 }
+async function flush() { await act(async () => { await new Promise((r) => setTimeout(r, 0)); }); }
+async function wait(ms: number) { await act(async () => { await new Promise((r) => setTimeout(r, ms)); }); }
 
-async function flushMountEffects() {
-  // let the mount-time /api/speech-status fetch chain resolve
-  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-}
-
-describe('useVoice turn-taking — onFinalTranscript fires on FINAL results only', () => {
-  it('does NOT fire on interim/partial results', async () => {
+describe('useVoice end-of-turn detection (continuous + silence debounce)', () => {
+  it('does NOT emit while speech is still arriving (within the debounce window)', async () => {
     const spy = vi.fn();
     mountWith(spy);
-    await flushMountEffects();
+    await flush();
 
-    // Several interim fragments as the user is still speaking.
-    act(() => { instances[0].onresult(makeResultEvent('ich', false)); });
-    act(() => { instances[0].onresult(makeResultEvent('ich habe eine', false)); });
-    act(() => { instances[0].onresult(makeResultEvent('ich habe eine alte gasheizung', false)); });
+    act(() => instances[0].onresult(evt({ t: 'ich', final: false })));
+    act(() => instances[0].onresult(evt({ t: 'ich habe eine', final: false })));
+    act(() => instances[0].onresult(evt({ t: 'ich habe eine alte gasheizung', final: false })));
 
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('fires exactly once with the full text on the final result', async () => {
+  it('accumulates multiple clauses and emits once after the user goes silent', async () => {
     const spy = vi.fn();
     mountWith(spy);
-    await flushMountEffects();
+    await flush();
 
-    act(() => { instances[0].onresult(makeResultEvent('ich', false)); });
-    act(() => { instances[0].onresult(makeResultEvent('ich habe eine alte gasheizung', false)); });
-    act(() => { instances[0].onresult(makeResultEvent('ich habe eine alte gasheizung', true)); });
+    // clause A finalizes, then clause B is spoken (interim) before the silence
+    act(() => instances[0].onresult(evt({ t: 'ich habe eine gasheizung', final: true })));
+    act(() => instances[0].onresult(
+      evt({ t: 'ich habe eine gasheizung', final: true }, { t: ' und sie ist alt', final: false }),
+    ));
+    await wait(SILENCE);
 
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith('ich habe eine alte gasheizung');
+    const out = spy.mock.calls[0][0];
+    expect(out).toMatch(/gasheizung/);
+    expect(out).toMatch(/alt/);
   });
 
-  it('does NOT fire on a final result that is empty/whitespace', async () => {
+  it('does NOT emit an empty / whitespace-only turn', async () => {
     const spy = vi.fn();
     mountWith(spy);
-    await flushMountEffects();
+    await flush();
 
-    act(() => { instances[0].onresult(makeResultEvent('   ', true)); });
+    act(() => instances[0].onresult(evt({ t: '   ', final: true })));
+    await wait(SILENCE);
+
     expect(spy).not.toHaveBeenCalled();
   });
 });

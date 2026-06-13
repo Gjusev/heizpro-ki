@@ -11,6 +11,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 type VoiceMode = 'speech-engine' | 'tts' | 'browser';
 
+// Silence gap that closes a user turn. With continuous recognition the user can
+// pause between clauses; only after this much silence do we treat the turn as done.
+const TURN_SILENCE_MS = 800;
+
 interface VoiceState {
   isListening: boolean;
   isSpeaking: boolean;
@@ -21,9 +25,10 @@ interface VoiceState {
 }
 
 interface UseVoiceOptions {
-  /** Fired exactly once when the recognizer emits a FINAL result for a turn.
-   *  Drives turn-taking — does NOT fire on interim/partial results, so the caller
-   *  never reacts to a half-spoken sentence. */
+  /** Fired once per user turn with the COMPLETE transcript, after the user goes
+   *  silent for TURN_SILENCE_MS. Drives turn-taking — it does not fire on every
+   *  interim/partial chunk, so the caller never reacts to a half-spoken sentence
+   *  and people can pause between clauses without being interrupted. */
   onFinalTranscript?: (text: string) => void;
 }
 
@@ -61,6 +66,13 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
   const onFinalRef = useRef(options?.onFinalTranscript);
   useEffect(() => { onFinalRef.current = options?.onFinalTranscript; });
 
+  // End-of-turn accumulation state. Kept in refs because the SpeechRecognition
+  // instance and its callbacks are created once on mount.
+  const committedRef = useRef('');        // finalized phrases accumulated this turn
+  const processedRef = useRef(0);         // result index already folded into committed
+  const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // silence debounce
+  const emittingRef = useRef(false);      // guard: emit at most once per turn
+
   // Detect available voice mode on mount
   useEffect(() => {
     fetch('/api/speech-status')
@@ -88,25 +100,50 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;   // keep listening across pauses so the user can pause between clauses
     recognition.interimResults = true;
     recognition.lang = 'de-DE';
     recognition.maxAlternatives = 1;
 
+    // Close out the current turn: stop listening and emit the accumulated
+    // transcript exactly once. (startListening resets the buffers for next turn.)
+    const finishTurn = (text: string) => {
+      if (emittingRef.current) return;
+      emittingRef.current = true;
+      if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
+      setState((prev) => ({ ...prev, isListening: false }));
+      try { recognitionRef.current?.stop(); } catch {}
+      const finalText = text.trim();
+      if (finalText) onFinalRef.current?.(finalText);
+    };
+
     recognition.onresult = (event: any) => {
+      if (emittingRef.current) return; // turn already finalized; ignore trailing results
       const results = event.results;
-      const transcript = results[results.length - 1][0].transcript;
-      setState((prev) => ({ ...prev, currentTranscript: transcript }));
-      if (results[results.length - 1].isFinal) {
-        setState((prev) => ({ ...prev, isListening: false }));
-        // Only a FINAL result closes a turn. Emitting here (not on interim results)
-        // prevents the agent from responding to a half-spoken sentence.
-        const finalText = transcript.trim();
-        if (finalText) onFinalRef.current?.(finalText);
+      // Fold newly-finalized phrases into the committed buffer; keep the current
+      // interim phrase separate for live display.
+      let interim = '';
+      for (let i = processedRef.current; i < results.length; i++) {
+        if (results[i].isFinal) {
+          committedRef.current += results[i][0].transcript;
+          processedRef.current = i + 1;
+        } else {
+          interim += results[i][0].transcript;
+        }
       }
+      setState((prev) => ({ ...prev, currentTranscript: (committedRef.current + interim).trim() }));
+
+      // End-of-turn debounce: restart the silence timer on every speech chunk.
+      // When nothing new arrives for TURN_SILENCE_MS, the user has finished talking.
+      if (turnTimerRef.current) clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = setTimeout(() => {
+        turnTimerRef.current = null;
+        finishTurn(committedRef.current + interim);
+      }, TURN_SILENCE_MS);
     };
 
     recognition.onerror = (event: any) => {
+      if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
       if (event.error !== 'no-speech') {
         setState((prev) => ({ ...prev, error: `Spracherkennung: ${event.error}`, isListening: false }));
       } else {
@@ -114,7 +151,15 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
       }
     };
 
-    recognition.onend = () => setState((prev) => ({ ...prev, isListening: false }));
+    recognition.onend = () => {
+      setState((prev) => ({ ...prev, isListening: false }));
+      // Recognition ended on its own (Chrome auto-stop / no-speech). If we captured
+      // speech but the debounce hadn't fired yet, flush it so the turn isn't lost.
+      if (!emittingRef.current && committedRef.current.trim()) {
+        if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
+        finishTurn(committedRef.current);
+      }
+    };
     recognitionRef.current = recognition;
 
     if (!audioRef.current) audioRef.current = new Audio();
@@ -134,6 +179,7 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
     return () => {
+      if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
       recognition.abort();
       window.speechSynthesis.cancel();
       if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -143,6 +189,11 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
     if (isSpeakingRef.current) return; // Block: never open mic while TTS is active (ref avoids stale closure)
+    // Reset per-turn accumulation / debounce state.
+    committedRef.current = '';
+    processedRef.current = 0;
+    emittingRef.current = false;
+    if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
     try { recognitionRef.current.stop(); } catch {} // Clear stale session
     setState((prev) => ({ ...prev, currentTranscript: '', error: null }));
     // Brief pause to let the audio hardware pipeline fully quiesce
@@ -159,6 +210,10 @@ export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return;
+    // A manual stop cancels the in-flight turn: suppress the onend auto-flush and
+    // tear down the debounce timer so nothing is emitted.
+    emittingRef.current = true;
+    if (turnTimerRef.current) { clearTimeout(turnTimerRef.current); turnTimerRef.current = null; }
     try { recognitionRef.current.stop(); } catch {}
     setState((prev) => ({ ...prev, isListening: false }));
   }, []);
