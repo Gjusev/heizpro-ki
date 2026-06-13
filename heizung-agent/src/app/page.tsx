@@ -76,7 +76,15 @@ const ModeBadge = ({ mode }: { mode: string }) => {
 };
 
 export default function SimulatorPage() {
-  const voice = useVoice();
+  const voice = useVoice({
+    // Turn-taking: react ONLY to a final, complete utterance — never to interim
+    // partial transcripts. This is what stops the agent from cutting the user off.
+    onFinalTranscript: (text) => {
+      if (!callActiveRef.current) return;
+      setMessages((prev) => [...prev, { id: `msg-${Date.now()}-u`, role: 'user', content: text, timestamp: new Date() }]);
+      processAgentResponse(text);
+    },
+  });
   const [selectedNiche, setSelectedNiche] = useState<Niche>('waermepumpe');
   const [callActive, setCallActive] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -90,6 +98,13 @@ export default function SimulatorPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isProcessingRef = useRef(false);
   const callStartRef = useRef<Date | null>(null);
+  // Refs mirror state so async callbacks (recognition events, TTS onEnd, fetch)
+  // always read the LATEST values instead of a stale render closure.
+  const messagesRef = useRef<Msg[]>([]);
+  const callActiveRef = useRef(false);
+
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { callActiveRef.current = callActive; }, [callActive]);
 
   useEffect(() => {
     setActiveAgentId(getActiveAgentId());
@@ -129,9 +144,18 @@ export default function SimulatorPage() {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true; setIsTyping(true);
     try {
+      // Build request history from the ref (always current) and append the user turn
+      // we are responding to. Reading the `messages` state directly here used to
+      // capture a stale closure — the user message is added via setMessages (async) —
+      // so the latest user input was left OUT of the request and the model re-read
+      // canned/previous answers. The explicit append fixes that.
+      const history = [
+        ...messagesRef.current.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })),
+        { role: 'user' as const, content: userText, timestamp: new Date().toISOString() },
+      ];
       const res = await fetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })), niche: selectedNiche, scriptId: activeScript?.id, currentPhase, agentId: activeAgentId, agentName: activeAgent?.name, personality: activeAgent?.persoenlichkeit }),
+        body: JSON.stringify({ messages: history, niche: selectedNiche, scriptId: activeScript?.id, currentPhase, agentId: activeAgentId, agentName: activeAgent?.name, personality: activeAgent?.persoenlichkeit }),
       });
       const data = await res.json();
       if (data.message) {
@@ -140,18 +164,11 @@ export default function SimulatorPage() {
         setSuggestions(data.suggestions || []); setIsTyping(false);
         voice.stopListening();
         voice.speak(data.message, () => {
-          setTimeout(() => { if (callActive && !voice.isSpeaking) voice.startListening(); }, 1200);
+          setTimeout(() => { if (callActiveRef.current) voice.startListening(); }, 1200);
         });
       }
     } catch { setIsTyping(false); } finally { isProcessingRef.current = false; }
-  }, [messages, selectedNiche, activeScript, currentPhase, callActive, voice, activeAgentId, activeAgent]);
-
-  useEffect(() => {
-    if (!callActive || !voice.isListening || !voice.currentTranscript?.trim()) return;
-    const text = voice.currentTranscript.trim();
-    setMessages((prev) => [...prev, { id: `msg-${Date.now()}-u`, role: 'user', content: text, timestamp: new Date() }]);
-    setTimeout(() => processAgentResponse(text), 200);
-  }, [voice.isListening, voice.currentTranscript]);
+  }, [selectedNiche, activeScript, currentPhase, voice, activeAgentId, activeAgent]);
 
   const startCall = async () => {
     setCallActive(true); setMessages([]); setCurrentPhase('begruessung'); setCallDuration(0); callStartRef.current = new Date(); setIsTyping(true);
@@ -164,7 +181,7 @@ export default function SimulatorPage() {
         setSuggestions(data.suggestions || []); setIsTyping(false);
         voice.stopListening();
         voice.speak(data.message, () => {
-          setTimeout(() => { if (callActive && !voice.isSpeaking) voice.startListening(); }, 1200);
+          setTimeout(() => { if (callActiveRef.current) voice.startListening(); }, 1200);
         });
       }
     } catch { setIsTyping(false); }
@@ -178,7 +195,7 @@ export default function SimulatorPage() {
   const handleSuggestion = (text: string) => {
     if (!callActive) return; voice.stopListening();
     setMessages((prev) => [...prev, { id: `msg-${Date.now()}-u`, role: 'user', content: text, timestamp: new Date() }]);
-    setTimeout(() => processAgentResponse(text), 200);
+    processAgentResponse(text);
   };
 
   const fmt = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;

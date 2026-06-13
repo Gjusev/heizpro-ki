@@ -20,6 +20,13 @@ interface VoiceState {
   mode: VoiceMode;
 }
 
+interface UseVoiceOptions {
+  /** Fired exactly once when the recognizer emits a FINAL result for a turn.
+   *  Drives turn-taking — does NOT fire on interim/partial results, so the caller
+   *  never reacts to a half-spoken sentence. */
+  onFinalTranscript?: (text: string) => void;
+}
+
 interface UseVoiceReturn extends VoiceState {
   startListening: () => void;
   stopListening: () => void;
@@ -30,7 +37,7 @@ interface UseVoiceReturn extends VoiceState {
   germanVoices: SpeechSynthesisVoice[];
 }
 
-export function useVoice(): UseVoiceReturn {
+export function useVoice(options?: UseVoiceOptions): UseVoiceReturn {
   const [state, setState] = useState<VoiceState>({
     isListening: false,
     isSpeaking: false,
@@ -46,6 +53,13 @@ export function useVoice(): UseVoiceReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const isSpeakingRef = useRef(false);
+
+  // Always-current final-transcript handler. The SpeechRecognition instance and its
+  // onresult callback are created once on mount ([] effect below), so we keep the
+  // latest handler in a ref and invoke it through the ref — otherwise onresult would
+  // be stuck on the render-0 closure and never see updated component state.
+  const onFinalRef = useRef(options?.onFinalTranscript);
+  useEffect(() => { onFinalRef.current = options?.onFinalTranscript; });
 
   // Detect available voice mode on mount
   useEffect(() => {
@@ -85,6 +99,10 @@ export function useVoice(): UseVoiceReturn {
       setState((prev) => ({ ...prev, currentTranscript: transcript }));
       if (results[results.length - 1].isFinal) {
         setState((prev) => ({ ...prev, isListening: false }));
+        // Only a FINAL result closes a turn. Emitting here (not on interim results)
+        // prevents the agent from responding to a half-spoken sentence.
+        const finalText = transcript.trim();
+        if (finalText) onFinalRef.current?.(finalText);
       }
     };
 
