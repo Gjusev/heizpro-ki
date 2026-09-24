@@ -1,5 +1,13 @@
 # HeizPro KI — an AI voice agent that answers real sales calls
 
+<p align="center">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0d9488?style=flat-square"></a>
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-App%20Router-20252b?style=flat-square">
+  <img alt="Voice" src="https://img.shields.io/badge/voice-ElevenLabs-20252b?style=flat-square">
+  <img alt="Agent" src="https://img.shields.io/badge/agent-OpenAI-20252b?style=flat-square">
+  <img alt="Docker" src="https://img.shields.io/badge/deploy-Docker-20252b?style=flat-square">
+</p>
+
 **Talk to it live: [mischa.mokka-dev.de](https://mischa.mokka-dev.de)**
 
 https://github.com/user-attachments/assets/4a67b4e1-f58e-4039-81f6-167f39737da1
@@ -19,6 +27,19 @@ A heating company was missing inbound calls while out on jobs. Answering service
 ## Stack
 
 Next.js (App Router) · TypeScript · ElevenLabs voice (`@elevenlabs/react`) · OpenAI (agent logic) · Drizzle ORM + PostgreSQL · Framer Motion · Docker
+
+## How a call flows
+
+```mermaid
+flowchart LR
+    C[Caller] -- audio --> STT[continuous recognition<br/>silence debounce · final-only]
+    STT --> AG[agent · OpenAI<br/>qualifies: who · what · where · urgency]
+    AG -- final speech only --> TTS[TTS · ElevenLabs<br/>automatic voice fallback]
+    TTS -- audio --> C
+    AG --> LEAD[(structured lead record<br/>Drizzle · PostgreSQL)]
+    SIM[customer-persona simulator] -- plays inbound calls --> AG
+    LEAD --> DASH[lead dashboard]
+```
 
 ## The unglamorous part (where the work actually went)
 
