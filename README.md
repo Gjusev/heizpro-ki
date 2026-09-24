@@ -4,6 +4,8 @@
 
 ![HeizPro KI in 18 seconds](docs/brag.mp4)
 
+![Simulator: two agents talking](simulator-preview.png)
+
 A heating company was missing inbound calls while out on jobs. Answering services are expensive, chatbots don't answer phones. So this: a voice agent that picks up, holds a real-time German conversation, qualifies the lead (who, what, where, how urgent), and writes a structured record the human can call back on.
 
 ## What's inside
