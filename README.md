@@ -2,7 +2,7 @@
 
 **Talk to it live: [mischa.mokka-dev.de](https://mischa.mokka-dev.de)**
 
-![Simulator: two agents talking](simulator-preview.png)
+![HeizPro KI in 18 seconds](docs/brag.mp4)
 
 A heating company was missing inbound calls while out on jobs. Answering services are expensive, chatbots don't answer phones. So this: a voice agent that picks up, holds a real-time German conversation, qualifies the lead (who, what, where, how urgent), and writes a structured record the human can call back on.
 
