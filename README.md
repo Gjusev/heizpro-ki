@@ -2,7 +2,7 @@
 
 **Talk to it live: [mischa.mokka-dev.de](https://mischa.mokka-dev.de)**
 
-![HeizPro KI in 18 seconds](docs/brag.mp4)
+https://github.com/user-attachments/assets/4a67b4e1-f58e-4039-81f6-167f39737da1
 
 ![Simulator: two agents talking](simulator-preview.png)
 
